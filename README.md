@@ -8,7 +8,7 @@ have slowed progress on that effort.
 
 After doing some work on the tool today, I will probably rename it soon, and
 break ties with the original tool. Please open issues or discussions if you
-have thoughs and desires for otel-cli.
+have thoughts and desires for otel-cli.
 
 Primarily I intend to explore an MCP implementation that is lean and easy to
 run anywhere, with no fuss, to tap into traces in my development loop.
