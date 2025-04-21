@@ -1,3 +1,16 @@
+## [0.5.1] - 2025
+
+Prototype an MCP server.
+
+### Added
+
+- Added Model Context Provider (MCP) server for agent-assisted code understanding
+  - analyzes spans to extract code context (file paths, line numbers, function names)
+  - provides a web UI for exploring traces
+  - includes WebSocket API for real-time updates
+  - offers REST APIs for querying traces, spans, and file associations
+  - has an embedded UI with go:embed
+
 ## [0.5.0] - 2025-04-21
 
 Fork otel-cli to @tobert's personal GitHub.

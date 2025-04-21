@@ -348,7 +348,9 @@ func (config Config) ParseEndpoint() (*url.URL, string) {
 		epUrl.Path = path.Join(epUrl.Path, "/v1/traces")
 	}
 
-	Diag.EndpointSource = source
+	if Diag.EndpointSource == "" {
+		Diag.EndpointSource = source
+	}
 	Diag.Endpoint = epUrl.String()
 	return epUrl, source
 }
