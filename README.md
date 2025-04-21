@@ -1,6 +1,22 @@
-# otel-cli
+# PROJECT STATUS UPDATE
 
-[![](https://img.shields.io/badge/stability-experimental-lightgrey.svg)](https://github.com/packethost/standards/blob/master/experimental-statement.md)
+This is a fork of the original otel-cli project that I will eventually rename.
+
+It's 100% Apache 2 code so this seems fine to do. I made attempts to maintain
+under the equinix-labs umbrella, but it seems some of the changes at the company
+have slowed progress on that effort.
+
+After doing some work on the tool today, I will probably rename it soon, and
+break ties with the original tool. Please open issues or discussions if you
+have thoughts and desires for otel-cli.
+
+Primarily I intend to explore an MCP implementation that is lean and easy to
+run anywhere, with no fuss, to tap into traces in my development loop.
+
+I turned on GitHub discussions, please use them to get in touch, or find
+me on Bluesky at `@renice.bsky.social`.
+
+# otel-cli
 
 otel-cli is a command-line tool for sending OpenTelemetry traces. It is written in
 Go and intended to be used in shell scripts and other places where the best option
