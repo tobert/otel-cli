@@ -1,3 +1,15 @@
+## [0.5.0] - 2025-04-21
+
+Fork otel-cli to @tobert's personal github.
+
+### Changed
+
+- bump to goreleaser v2
+- change package references to github.com/tobert
+- merge PR from @alsuren
+  - add demos/30-trace-build-process/otel-wrapper-shim.sh
+- automated dependency updates
+
 ## [0.4.6] - 2024-05-13
 
 Build smaller binaries and add version subcommand.
