@@ -1,10 +1,8 @@
 # otel-cli
 
-[![](https://img.shields.io/badge/stability-experimental-lightgrey.svg)](https://github.com/packethost/standards/blob/master/experimental-statement.md)
-
-otel-cli is a command-line tool for sending OpenTelemetry traces. It is written in
-Go and intended to be used in shell scripts and other places where the best option
-available for sending spans is executing another program.
+otel-cli is a command-line tool for sending and working with OpenTelemetry traces.
+It is written in Go and intended to be used in shell scripts and other places where
+the best option available for sending spans is executing another program.
 
 otel-cli can be added to your scripts with no configuration and it will run as normal
 but in non-recording mode and will emit no traces. This follows the OpenTelemetry community's
@@ -55,6 +53,9 @@ go build
 # run otel-cli as a local OTLP server and print traces to your console
 # run this in its own terminal and try some of the commands below!
 otel-cli server tui
+
+# or run as a Model Context Provider server (see MCP Server section below)
+otel-cli server mcp --port 8080
 
 # configure otel-cli to talk the the local server spawned above
 export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
@@ -202,12 +203,15 @@ But, if you just want to quickly try out otel-cli, you can also just install it 
 
 ### 3. A system to receive/inspect the traces you generate
 
-otel-cli can run as a server and accept OTLP connections. It has two modes, one prints to your console
-while the other writes to JSON files.
+otel-cli can run as a server and accept OTLP connections. It has three modes:
+- `tui` which prints traces to your console in a text-based UI
+- `json` which writes traces to JSON files
+- `mcp` which collects traces, analyzes code context, and provides a web UI and API (see MCP Server section above)
 
 ```shell
 otel-cli server tui
 otel-cli server json --dir $dir --timeout 60 --max-spans 5
+otel-cli server mcp --port 8080 --project-root $(pwd)
 ```
 
 Many SaaS vendors accept OTLP these days so one option is to send directly to those. This is not
@@ -251,6 +255,61 @@ otel-cli exec --service my-service --name "curl google" curl https://google.com
 ```
 
 This trace will be available at `localhost:8000`.
+
+## MCP Server (Model Context Provider)
+
+The MCP Server is a specialized component designed to make otel trace data
+available to coding agents like Claude Code.
+
+### Starting the MCP Server
+
+```shell
+# you can start with defaults, OTLP in 4317 and MCP/http on 8080
+otel-cli server mcp
+
+# or you can configure things exactly the way you want to
+otel-cli server mcp \
+   --port 9000 \
+   --project-root $HOME/src/otel-cli \
+   --retention 1h \
+   --max-spans 500 \
+   --allow-origins "http://localhost:3000,https://myapp.com"
+```
+
+### Using the MCP Server
+
+Once the server is running, direct your OpenTelemetry traces to it:
+
+```shell
+# Send traces to the MCP server
+export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:8080
+otel-cli exec --service my-service --name "my-function" ./my-program
+```
+
+### Accessing the MCP Web UI and API
+
+- Web UI: http://localhost:8080/ (change the port if you used --port)
+- WebSocket endpoint: ws://localhost:8080/ws
+- REST API endpoints:
+  - `GET /api/traces` - List all traces
+  - `GET /api/trace/{id}` - Get a specific trace
+  - `GET /api/files` - List all files with spans
+  - `GET /api/file/{path}` - Get traces for a specific file
+  - `POST /api/spans/search` - Search across traces
+
+### Integrating with AI Tools
+
+The MCP Server is designed to provide structured context about your code's runtime behavior to coding agents. For example:
+
+```shell
+# capture traces in memory with otel-cli
+otel-cli server mcp &
+# point applications at the otel-cli OTLP server
+export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
+# generate a trace with the application
+otel-cli exec --service my-service ./my-program
+# now you an ask your agent questions about the traces
+```
 
 ### SaaS tracing vendor
 

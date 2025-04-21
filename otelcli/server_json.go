@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tobert/otel-cli/otlpserver"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpserver"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
@@ -53,7 +53,7 @@ func doServerJson(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	runServer(config, renderJson, stop)
+	runServer(&config, renderJson, stop)
 }
 
 // writeFile takes the spans and events and writes them out to json files in the

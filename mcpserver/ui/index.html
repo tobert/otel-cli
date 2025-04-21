@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenTelemetry MCP Server</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .traces-list {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .trace-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+        }
+        .trace-item:hover {
+            background-color: #f9f9f9;
+        }
+        .trace-item.error {
+            border-left: 4px solid #dc3545;
+        }
+        .trace-detail {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 16px;
+        }
+        .code-context {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .span-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .span-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .span-children {
+            margin-left: 20px;
+            padding-left: 10px;
+            border-left: 2px solid #eee;
+        }
+        .notification {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            animation: fadeOut 3s;
+            animation-fill-mode: forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .tab-button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background-color: #f8f8f8;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            margin-right: 4px;
+        }
+        .tab-button.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+        }
+        .tab-content {
+            display: none;
+            border: 1px solid #ddd;
+            padding: 16px;
+            border-radius: 0 4px 4px 4px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f8f8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>OpenTelemetry MCP Server</h1>
+        <div id="connection-status">Connecting...</div>
+    </div>
+
+    <div class="tab-container">
+        <div class="tab-buttons">
+            <div class="tab-button active" data-tab="traces">Traces</div>
+            <div class="tab-button" data-tab="files">Files</div>
+        </div>
+
+        <div class="tab-content active" id="traces-tab">
+            <h2>Recent Traces</h2>
+            <div class="traces-list" id="traces-container"></div>
+            <div class="trace-detail" id="trace-detail" style="display: none;"></div>
+        </div>
+
+        <div class="tab-content" id="files-tab">
+            <h2>Files with Telemetry</h2>
+            <div id="files-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let activeTraceId = null;
+        
+        // Initialize WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+            
+            socket.onopen = () => {
+                document.getElementById('connection-status').textContent = 'Connected';
+                document.getElementById('connection-status').style.color = '#28a745';
+            };
+            
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'connected') {
+                    // Initial connection message
+                    console.log('Connected to MCP server');
+                } else if (data.type === 'new_span') {
+                    // New span notification
+                    showNotification('New span received');
+                    refreshTraces();
+                    
+                    // Refresh trace details if this is for the active trace
+                    if (activeTraceId && data.trace_id === activeTraceId) {
+                        loadTraceDetails(activeTraceId);
+                    }
+                }
+            };
+            
+            socket.onclose = () => {
+                document.getElementById('connection-status').textContent = 'Disconnected';
+                document.getElementById('connection-status').style.color = '#dc3545';
+                
+                // Attempt to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('connection-status').textContent = 'Connection Error';
+                document.getElementById('connection-status').style.color = '#dc3545';
+            };
+        }
+        
+        // Show a temporary notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+        
+        // Fetch and display traces
+        function refreshTraces() {
+            fetch('/api/traces')
+                .then(response => response.json())
+                .then(traces => {
+                    const container = document.getElementById('traces-container');
+                    container.innerHTML = '';
+                    
+                    if (traces.length === 0) {
+                        container.innerHTML = '<p>No traces found. Send some spans to see them here.</p>';
+                        return;
+                    }
+                    
+                    // Sort by start time (most recent first)
+                    traces.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+                    
+                    traces.forEach(trace => {
+                        const traceEl = document.createElement('div');
+                        traceEl.className = 'trace-item';
+                        if (trace.errorCount > 0) {
+                            traceEl.classList.add('error');
+                        }
+                        
+                        const traceName = trace.name || 'Unnamed Trace';
+                        const traceTime = new Date(trace.startTime).toLocaleTimeString();
+                        
+                        traceEl.innerHTML = `
+                            <div>
+                                <strong>${traceName}</strong>
+                                <div>Spans: ${trace.spanCount}</div>
+                            </div>
+                            <div>
+                                <div>Time: ${traceTime}</div>
+                                <div>Duration: ${trace.durationMs}ms</div>
+                                ${trace.errorCount > 0 ? `<div style="color: #dc3545">Errors: ${trace.errorCount}</div>` : ''}
+                            </div>
+                        `;
+                        
+                        traceEl.addEventListener('click', () => {
+                            loadTraceDetails(trace.traceId);
+                            activeTraceId = trace.traceId;
+                            
+                            // Mark as selected
+                            document.querySelectorAll('.trace-item').forEach(item => {
+                                item.style.backgroundColor = '';
+                            });
+                            traceEl.style.backgroundColor = '#f0f0f0';
+                        });
+                        
+                        container.appendChild(traceEl);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching traces:', error);
+                });
+        }
+        
+        // Load files with telemetry
+        function loadFiles() {
+            fetch('/api/files')
+                .then(response => response.json())
+                .then(files => {
+                    const container = document.getElementById('files-container');
+                    container.innerHTML = '';
+                    
+                    if (files.length === 0) {
+                        container.innerHTML = '<p>No files with telemetry found.</p>';
+                        return;
+                    }
+                    
+                    const table = document.createElement('table');
+                    table.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>File Path</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    `;
+                    
+                    files.forEach(file => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${file}</td>
+                            <td><button onclick="loadFileTraces('${file}')">View Traces</button></td>
+                        `;
+                        table.querySelector('tbody').appendChild(row);
+                    });
+                    
+                    container.appendChild(table);
+                })
+                .catch(error => {
+                    console.error('Error loading files:', error);
+                });
+        }
+        
+        // Load traces for a specific file
+        function loadFileTraces(filePath) {
+            fetch(`/api/file/${encodeURIComponent(filePath)}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Switch to traces tab and filter by selected file
+                    document.querySelector('[data-tab="traces"]').click();
+                    
+                    // TODO: implement file-specific trace filtering
+                    showNotification(`Loaded traces for ${filePath}`);
+                })
+                .catch(error => {
+                    console.error('Error loading file traces:', error);
+                });
+        }
+        
+        // Load and display trace details
+        function loadTraceDetails(traceId) {
+            fetch(`/api/trace/${traceId}`)
+                .then(response => response.json())
+                .then(trace => {
+                    const detailEl = document.getElementById('trace-detail');
+                    detailEl.style.display = 'block';
+                    
+                    // Basic trace info
+                    let content = `
+                        <h3>Trace: ${trace.spans[Object.keys(trace.spans)[0]]?.name || 'Unnamed'}</h3>
+                        <div>
+                            <strong>Trace ID:</strong> ${trace.traceId}<br>
+                            <strong>Start Time:</strong> ${new Date(trace.startTime).toLocaleString()}<br>
+                            <strong>Duration:</strong> ${new Date(trace.endTime) - new Date(trace.startTime)}ms<br>
+                            <strong>Status:</strong> ${trace.status || 'ok'}<br>
+                            ${trace.message ? `<strong>Error:</strong> ${trace.message}<br>` : ''}
+                        </div>
+                        <h4>Spans</h4>
+                    `;
+                    
+                    // Build span tree
+                    const spans = trace.spans;
+                    const rootSpans = Object.values(spans).filter(span => !span.parentId || span.parentId === "0000000000000000");
+                    
+                    function renderSpanTree(spanList, isRoot = true) {
+                        let html = `<ul class="span-list ${isRoot ? '' : 'span-children'}">`;
+                        
+                        spanList.forEach(span => {
+                            const spanId = Object.keys(spans).find(id => spans[id] === span);
+                            const childSpans = Object.values(spans).filter(s => s.parentId === spanId);
+                            
+                            html += `
+                                <li class="span-item">
+                                    <strong>${span.name || 'Unnamed Span'}</strong>
+                                    <div>Duration: ${span.duration}ms</div>
+                                    ${span.fileContexts && span.fileContexts.length ? renderFileContexts(span.fileContexts) : ''}
+                                    ${childSpans.length ? renderSpanTree(childSpans, false) : ''}
+                                </li>
+                            `;
+                        });
+                        
+                        html += '</ul>';
+                        return html;
+                    }
+                    
+                    function renderFileContexts(contexts) {
+                        let html = '<div class="file-contexts">';
+                        
+                        contexts.forEach(ctx => {
+                            html += `
+                                <div>
+                                    <strong>File:</strong> ${ctx.filePath}<br>
+                                    ${ctx.functionName ? `<strong>Function:</strong> ${ctx.functionName}<br>` : ''}
+                                    <strong>Operation:</strong> ${ctx.operation}<br>
+                                    <strong>Lines:</strong> ${ctx.lineStart} to ${ctx.lineEnd}<br>
+                                    <div class="code-context">${ctx.codeSnippet}</div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                        return html;
+                    }
+                    
+                    content += renderSpanTree(rootSpans);
+                    detailEl.innerHTML = content;
+                })
+                .catch(error => {
+                    console.error('Error loading trace details:', error);
+                });
+        }
+        
+        // Tab switching
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Update active tab button
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+                
+                // Show the selected tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                // Load data for selected tab
+                if (tabId === 'traces') {
+                    refreshTraces();
+                } else if (tabId === 'files') {
+                    loadFiles();
+                }
+            });
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            refreshTraces();
+        });
+    </script>
+</body>
+</html>

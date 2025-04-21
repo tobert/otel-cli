@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/tobert/otel-cli/otlpclient"
-	"github.com/tobert/otel-cli/otlpserver"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpclient"
+	"github.com/tobert/otel-cli/otlpserver"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
@@ -52,7 +52,7 @@ func doServerTui(cmd *cobra.Command, args []string) {
 		tuiServer.area.Stop()
 	}
 
-	runServer(config, renderTui, stop)
+	runServer(&config, renderTui, stop)
 }
 
 // renderTui takes the given span and events, appends them to the in-memory

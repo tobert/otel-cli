@@ -6,6 +6,7 @@ toolchain go1.22.4
 
 require (
 	github.com/google/go-cmp v0.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/pterm/pterm v0.12.79
 	github.com/spf13/cobra v1.8.0
 	go.opentelemetry.io/otel v1.27.0
