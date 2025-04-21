@@ -1,4 +1,4 @@
-# last updated for goreleaser v1.14.1
+version: 2
 
 before:
   hooks:
@@ -8,7 +8,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: 'SNAPSHOT-{{ .Commit }}'
+  version_template: 'SNAPSHOT-{{ .Commit }}'
 
 changelog:
   sort: asc
@@ -55,20 +55,19 @@ nfpms:
       - rpm
 
 archives:
-  - format: tar.gz
+  - formats: [ "tar.gz" ]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: zip
     builds_info:
       group: root
       owner: root
-    rlcp: true
 
 brews:
   # This means the repository must be tobert/homebrew-otel-cli
   - name: "otel-cli"
     url_template: "https://github.com/tobert/otel-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    tap:
+    repository:
       owner: "tobert"
       name: "homebrew-otel-cli"
       token: "{{ .Env.GITHUB_TOKEN }}"
