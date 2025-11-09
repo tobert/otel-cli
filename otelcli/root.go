@@ -59,6 +59,7 @@ func createRootCmd(config *Config) *cobra.Command {
 
 	cobra.EnableCommandSorting = false
 	rootCmd.Flags().SortFlags = false
+	rootCmd.Version = config.Version
 
 	Diag.NumArgs = len(os.Args) - 1
 	Diag.CliArgs = []string{}

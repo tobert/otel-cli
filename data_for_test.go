@@ -1373,4 +1373,29 @@ var suites = []FixtureSuite{
 			},
 		},
 	},
+	// version flag tests
+	{
+		{
+			Name: "version subcommand",
+			Config: FixtureConfig{
+				CliArgs: []string{"version"},
+			},
+			Expect: Results{
+				CliOutput:   "\n",
+				CliOutputRe: regexp.MustCompile(`\S+`),
+				ExitCode:    0,
+			},
+		},
+		{
+			Name: "--version flag",
+			Config: FixtureConfig{
+				CliArgs: []string{"--version"},
+			},
+			Expect: Results{
+				CliOutput:   "\n",
+				CliOutputRe: regexp.MustCompile(`otel-cli version \S+`),
+				ExitCode:    0,
+			},
+		},
+	},
 }
