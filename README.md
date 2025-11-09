@@ -1,20 +1,15 @@
-# PROJECT STATUS UPDATE
+# PROJECT STATUS
 
-This is a fork of the original otel-cli project that I will eventually rename.
+This is a fork of the original otel-cli project, actively maintained by **Amy & the bots** 🤖
 
-It's 100% Apache 2 code so this seems fine to do. I made attempts to maintain
-under the equinix-labs umbrella, but it seems some of the changes at the company
-have slowed progress on that effort.
+Built originally by A. Tobey while at Equinix Metal, this fork continues development with a focus on being a great command-line tool for OpenTelemetry signals. Starting with v0.6.0, development uses agent-assisted workflows to maintain code quality while preserving the project's philosophy.
 
-After doing some work on the tool today, I will probably rename it soon, and
-break ties with the original tool. Please open issues or discussions if you
-have thoughts and desires for otel-cli.
+The project is 100% Apache 2 licensed code. Development is tracked via GitHub issues and pull requests.
 
-Primarily I intend to explore an MCP implementation that is lean and easy to
-run anywhere, with no fuss, to tap into traces in my development loop.
-
-I turned on GitHub discussions, please use them to get in touch, or find
-me on Bluesky at `@renice.bsky.social`.
+**Get in touch:**
+- 📋 [Open an issue](https://github.com/tobert/otel-cli/issues) for bugs or features
+- 💬 [Start a discussion](https://github.com/tobert/otel-cli/discussions) for ideas and questions
+- 🦋 Find Amy on Bluesky: [@renice.bsky.social](https://bsky.app/profile/renice.bsky.social)
 
 # otel-cli
 
@@ -302,7 +297,19 @@ go run . span -n "testing" -s "my first test span"
 
 ## Contributing
 
-Please file issues and PRs on the GitHub project at https://github.com/tobert/otel-cli
+We welcome contributions! This project uses agent-assisted development starting with v0.6.0.
+
+**For agents working on this codebase:**
+- See [BOTS.md](BOTS.md) for comprehensive agent development guidance
+- CLAUDE.md and GEMINI.md symlink to BOTS.md for model-specific access
+- Emphasize functional testing in `main_test.go`
+- Commit freely in branches, squash on merge to main
+
+**For human contributors:**
+- File [issues](https://github.com/tobert/otel-cli/issues) for bugs or feature requests
+- Submit PRs with clear descriptions
+- See [TESTING.md](TESTING.md) for testing guidance
+- Follow the existing Go code style
 
 ## Releases
 
@@ -327,5 +334,7 @@ goreleaser release --rm-dist
 
 ## License
 
-Apache 2.0, see LICENSE
+Apache License 2.0 - Copyright (c) 2025 A. Tobey
+
+See [LICENSE](LICENSE) for full details.
 
