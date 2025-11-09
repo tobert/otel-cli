@@ -18,6 +18,7 @@ Begin agent-assisted development era.
 - Clarify workflow: commit freely in branches, squash on merge to main
 - README: clarify fork status and "Amy & the bots" as active maintainers
 - README: improved Contributing section for both agents and humans
+- LICENSE: updated copyright to include Equinix Metal and 2025 A. Tobey
 
 ## [0.5.0] - 2025-04-21
 
