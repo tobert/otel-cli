@@ -66,12 +66,15 @@ The test harness is more complex than otel-cli itself - this is intentional. We 
 git log --oneline -n 10
 git show HEAD
 
-# 2. WORK: Track your progress
+# 2. WORK: Track your progress (commit often in your branch)
 git add <files>
 git commit -m "type: what you're building"
 
 # 3. PERSIST: Save your state
 git push origin <branch>
+
+# 4. MERGE: Squash commits when merging to main
+# PRs are squashed on merge to keep main history clean
 ```
 
 ### The Universal Commit Message Template
@@ -309,6 +312,21 @@ gh issue view <number>       # Read issue details
 gh issue create              # Create new issue
 ```
 
+**Squash Commits on Merge:**
+
+This project maintains a clean, linear history through squash commits:
+
+- **Work in branches**: Make as many commits as needed during development
+- **Rich commit messages**: Document your journey in branch commits
+- **Squash on merge**: PRs are squashed into a single commit on main
+- **Final commit message**: Should summarize the entire PR, not just the last commit
+
+When creating a PR, write a good description - it becomes the squash commit message. Include:
+- What changed and why
+- Key decisions made
+- Any gotchas or learnings
+- Tests added or modified
+
 ## 📦 Versioning & Releases
 
 **Semantic versioning:** MAJOR.MINOR.PATCH (e.g., 0.5.0)
@@ -351,9 +369,10 @@ gh issue create              # Create new issue
 
 1. **All tests pass** - `go build && go test && go test ./...`
 2. **Code formatted** - `go fmt ./...`
-3. **Commit with attribution** - Use the template above
-4. **Push and create PR** - Reference the issue
+3. **Commit with attribution** - Use the template above (multiple commits OK in branch)
+4. **Push and create PR** - Reference the issue with good description
 5. **Update issue** - Mark as complete or pending review
+6. **Squash on merge** - PRs are squashed to keep main history clean
 
 ## 🤝 Cross-Model Collaboration
 
