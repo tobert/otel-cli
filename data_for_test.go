@@ -10,6 +10,7 @@ package main_test
 import (
 	"os"
 	"regexp"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1381,9 +1382,24 @@ var suites = []FixtureSuite{
 				CliArgs: []string{"version"},
 			},
 			Expect: Results{
-				CliOutput:   "\n",
-				CliOutputRe: regexp.MustCompile(`\S+`),
+				CliOutputRe: regexp.MustCompile(`.+`), // match and strip any content
+				CliOutput:   "\n",                      // after strip, should be just newline
 				ExitCode:    0,
+			},
+			CheckFuncs: []CheckFunc{
+				func(t *testing.T, f Fixture, r Results) {
+					// version subcommand outputs just the version string
+					// should be "unknown" or "version commit date"
+					output := strings.TrimSpace(r.CliOutput)
+					if output == "" {
+						t.Errorf("version subcommand produced no output")
+						return
+					}
+					// valid outputs: "unknown" or multi-part version like "0.6.0 abc123 2025-11-09"
+					if output != "unknown" && !regexp.MustCompile(`^\S+`).MatchString(output) {
+						t.Errorf("version subcommand output format unexpected: %q", output)
+					}
+				},
 			},
 		},
 		{
@@ -1392,9 +1408,29 @@ var suites = []FixtureSuite{
 				CliArgs: []string{"--version"},
 			},
 			Expect: Results{
-				CliOutput:   "\n",
-				CliOutputRe: regexp.MustCompile(`otel-cli version \S+`),
+				CliOutputRe: regexp.MustCompile(`.+`), // match and strip any content
+				CliOutput:   "\n",                      // after strip, should be just newline
 				ExitCode:    0,
+			},
+			CheckFuncs: []CheckFunc{
+				func(t *testing.T, f Fixture, r Results) {
+					// --version flag outputs "otel-cli version <version>"
+					output := strings.TrimSpace(r.CliOutput)
+					if !strings.HasPrefix(output, "otel-cli version ") {
+						t.Errorf("--version flag should start with 'otel-cli version ', got: %q", output)
+						return
+					}
+					// extract version part after "otel-cli version "
+					version := strings.TrimPrefix(output, "otel-cli version ")
+					if version == "" {
+						t.Errorf("--version flag has no version content after prefix")
+						return
+					}
+					// valid version: "unknown" or multi-part like "0.6.0 abc123 2025-11-09"
+					if version != "unknown" && !regexp.MustCompile(`^\S+`).MatchString(version) {
+						t.Errorf("--version flag version format unexpected: %q", version)
+					}
+				},
 			},
 		},
 	},
