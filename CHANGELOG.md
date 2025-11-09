@@ -1,3 +1,20 @@
+## [0.6.0] - 2025-11-09
+
+Begin agent-assisted development era.
+
+### Added
+
+- BOTS.md: LLM agent development protocol and guidance
+- CLAUDE.md and GEMINI.md symlinks to BOTS.md
+- Agent memory and collaboration patterns adapted from otlp-mcp
+- GitHub issue tracking integration for agent workflows
+
+### Changed
+
+- Establish agent-assisted development practices
+- Emphasize functional testing and self-contained design
+- Documentation of project philosophy and structure for agents
+
 ## [0.5.0] - 2025-04-21
 
 Fork otel-cli to @tobert's personal GitHub.
