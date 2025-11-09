@@ -16,6 +16,8 @@ Begin agent-assisted development era.
 - Emphasize functional testing and self-contained design
 - Documentation of project philosophy and structure for agents
 - Clarify workflow: commit freely in branches, squash on merge to main
+- README: clarify fork status and "Amy & the bots" as active maintainers
+- README: improved Contributing section for both agents and humans
 
 ## [0.5.0] - 2025-04-21
 
