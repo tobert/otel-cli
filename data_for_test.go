@@ -1434,4 +1434,38 @@ var suites = []FixtureSuite{
 			},
 		},
 	},
+	// exec with non-existent command should fail gracefully
+	{
+		{
+			Name: "exec non-existent command should not panic",
+			Config: FixtureConfig{
+				CliArgs: []string{"exec", "--endpoint", "{{endpoint}}", "command-that-does-not-exist-anywhere"},
+			},
+			Expect: Results{
+				SpanCount: 1,
+				ExitCode:  127, // exit 127 like shell does for "command not found"
+				Config:    otelcli.DefaultConfig().WithEndpoint("{{endpoint}}"),
+			},
+			CheckFuncs: []CheckFunc{
+				func(t *testing.T, f Fixture, r Results) {
+					// should send a span with error status
+					if r.Span == nil {
+						t.Errorf("expected a span to be sent even when command fails to start")
+						return
+					}
+					if r.Span.Status == nil {
+						t.Errorf("expected span status to be set")
+						return
+					}
+					if r.Span.Status.Code != 2 { // STATUS_CODE_ERROR
+						t.Errorf("expected span status code ERROR (2), got %d", r.Span.Status.Code)
+					}
+					// error message should mention the command failure
+					if !strings.Contains(r.Span.Status.Message, "exec command failed") {
+						t.Errorf("expected error message to contain 'exec command failed', got: %q", r.Span.Status.Message)
+					}
+				},
+			},
+		},
+	},
 }
