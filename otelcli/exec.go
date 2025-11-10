@@ -146,8 +146,11 @@ func doExec(cmd *cobra.Command, args []string) {
 
 	// append process attributes
 	span.Attributes = append(span.Attributes, processAttrs...)
-	pidAttrs := processPidAttrs(config, int64(child.Process.Pid), int64(os.Getpid()))
-	span.Attributes = append(span.Attributes, pidAttrs...)
+	// child.Process is nil if the command failed to start (e.g., command not found)
+	if child.Process != nil {
+		pidAttrs := processPidAttrs(config, int64(child.Process.Pid), int64(os.Getpid()))
+		span.Attributes = append(span.Attributes, pidAttrs...)
+	}
 
 	cancelCtxDeadline()
 	close(signals)
@@ -169,7 +172,14 @@ func doExec(cmd *cobra.Command, args []string) {
 	}
 
 	// set the global exit code so main() can grab it and os.Exit() properly
-	Diag.ExecExitCode = child.ProcessState.ExitCode()
+	// ProcessState is nil if the command failed to start
+	if child.ProcessState != nil {
+		Diag.ExecExitCode = child.ProcessState.ExitCode()
+	} else {
+		// command failed to start (e.g., command not found)
+		// use exit code 127 to match shell behavior for "command not found"
+		Diag.ExecExitCode = 127
+	}
 
 	config.PropagateTraceparent(span, os.Stdout)
 }
