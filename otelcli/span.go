@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/tobert/otel-cli/otlpclient"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpclient"
 )
 
 // spanCmd represents the span command

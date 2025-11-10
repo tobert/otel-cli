@@ -30,6 +30,7 @@ type OTLPConfig interface {
 	GetTlsConfig() *tls.Config
 	GetIsRecording() bool
 	GetEndpoint() *url.URL
+	GetLogsEndpoint() *url.URL
 	GetInsecure() bool
 	GetTimeout() time.Duration
 	GetHeaders() map[string]string

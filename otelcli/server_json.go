@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tobert/otel-cli/otlpserver"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpserver"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 

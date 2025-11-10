@@ -4,8 +4,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/tobert/otel-cli/w3c/traceparent"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/w3c/traceparent"
 )
 
 // spanEventCmd represents the span event command

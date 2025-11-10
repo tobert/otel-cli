@@ -62,6 +62,8 @@ func DefaultConfig() Config {
 		SpanEndTime:                  "now",
 		EventName:                    "todo-generate-default-event-names",
 		EventTime:                    "now",
+		LogBody:                      "",
+		LogSeverity:                  "INFO",
 		CfgFile:                      "",
 		Verbose:                      false,
 		Fail:                         false,
@@ -76,7 +78,8 @@ func DefaultConfig() Config {
 type Config struct {
 	Endpoint       string            `json:"endpoint" env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	TracesEndpoint string            `json:"traces_endpoint" env:"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"`
-	Protocol       string            `json:"protocol" env:"OTEL_EXPORTER_OTLP_PROTOCOL,OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"`
+	LogsEndpoint   string            `json:"logs_endpoint" env:"OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"`
+	Protocol       string            `json:"protocol" env:"OTEL_EXPORTER_OTLP_PROTOCOL,OTEL_EXPORTER_OTLP_TRACES_PROTOCOL,OTEL_EXPORTER_OTLP_LOGS_PROTOCOL"`
 	Timeout        string            `json:"timeout" env:"OTEL_EXPORTER_OTLP_TIMEOUT,OTEL_EXPORTER_OTLP_TRACES_TIMEOUT"`
 	Headers        map[string]string `json:"otlp_headers" env:"OTEL_EXPORTER_OTLP_HEADERS"` // TODO: needs json marshaler hook to mask tokens
 	Insecure       bool              `json:"insecure" env:"OTEL_EXPORTER_OTLP_INSECURE"`
@@ -119,6 +122,9 @@ type Config struct {
 	SpanEndTime   string `json:"span_end_time" env:""`
 	EventName     string `json:"event_name" env:""`
 	EventTime     string `json:"event_time" env:""`
+
+	LogBody     string `json:"log_body" env:"OTEL_CLI_LOG_BODY"`
+	LogSeverity string `json:"log_severity" env:"OTEL_CLI_LOG_SEVERITY"`
 
 	CfgFile string `json:"config_file" env:"OTEL_CLI_CONFIG_FILE"`
 	Verbose bool   `json:"verbose" env:"OTEL_CLI_VERBOSE"`
@@ -353,6 +359,67 @@ func (config Config) ParseEndpoint() (*url.URL, string) {
 	return epUrl, source
 }
 
+// ParseLogsEndpoint parses the logs endpoint from config, following OTel spec.
+// Signal-specific endpoint (LogsEndpoint) takes precedence over general Endpoint.
+// Follows the same logic as ParseEndpoint but uses /v1/logs path for HTTP.
+// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#endpoint-urls-for-otlphttp
+func (config Config) ParseLogsEndpoint() (*url.URL, string) {
+	var endpoint, source string
+	var epUrl *url.URL
+	var err error
+
+	// signal-specific configs get precedence over general endpoint per OTel spec
+	if config.LogsEndpoint != "" {
+		endpoint = config.LogsEndpoint
+		source = "signal"
+	} else if config.Endpoint != "" {
+		endpoint = config.Endpoint
+		source = "general"
+	} else {
+		config.SoftFail("no endpoint configuration available")
+	}
+
+	parts := strings.Split(endpoint, ":")
+	// bare hostname? can only be grpc, prepend
+	if len(parts) == 1 {
+		epUrl, err = url.Parse("grpc://" + endpoint + ":4317")
+		if err != nil {
+			config.SoftFail("error parsing (assumed) gRPC bare host address '%s': %s", endpoint, err)
+		}
+	} else if len(parts) > 1 { // could be URI or host:port
+		// actual URIs
+		// grpc:// is only an otel-cli thing, maybe should drop it?
+		if parts[0] == "grpc" || parts[0] == "http" || parts[0] == "https" {
+			epUrl, err = url.Parse(endpoint)
+			if err != nil {
+				config.SoftFail("error parsing provided %s URI '%s': %s", source, endpoint, err)
+			}
+		} else {
+			// gRPC host:port
+			epUrl, err = url.Parse("grpc://" + endpoint)
+			if err != nil {
+				config.SoftFail("error parsing (assumed) gRPC host:port address '%s': %s", endpoint, err)
+			}
+		}
+	}
+
+	// Per spec, /v1/logs is the default, appended to any url passed
+	// to the general endpoint
+	if strings.HasPrefix(epUrl.Scheme, "http") && source != "signal" && !strings.HasSuffix(epUrl.Path, "/v1/logs") {
+		epUrl.Path = path.Join(epUrl.Path, "/v1/logs")
+	}
+
+	Diag.EndpointSource = source
+	Diag.Endpoint = epUrl.String()
+	return epUrl, source
+}
+
+// GetLogsEndpoint returns the parsed logs endpoint URL.
+func (c Config) GetLogsEndpoint() *url.URL {
+	ep, _ := c.ParseLogsEndpoint()
+	return ep
+}
+
 // SoftLog only calls through to log if otel-cli was run with the --verbose flag.
 // TODO: does it make any sense to support %w? probably yes, can clean up some
 // diagnostics.Error touch points.
@@ -535,6 +602,12 @@ func (c Config) WithEndpoint(with string) Config {
 // WithTracesEndpoint returns the config with TracesEndpoint set to the provided value.
 func (c Config) WithTracesEndpoint(with string) Config {
 	c.TracesEndpoint = with
+	return c
+}
+
+// WithLogsEndpoint returns the config with LogsEndpoint set to the provided value.
+func (c Config) WithLogsEndpoint(with string) Config {
+	c.LogsEndpoint = with
 	return c
 }
 
