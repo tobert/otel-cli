@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -232,3 +233,33 @@ func retry(ctx context.Context, _ OTLPConfig, fun retryFun) (context.Context, er
 // retrying until timeout. Set the middle wait arg to a time.Duration to
 // sleep a requested amount of time before next try
 type retryFun func(ctx context.Context) (ctxOut context.Context, keepGoing bool, wait time.Duration, err error)
+
+// StringMapAttrsToProtobuf takes a map of string:string, such as that from --attrs
+// and returns them in an []*commonpb.KeyValue
+func StringMapAttrsToProtobuf(attributes map[string]string) []*commonpb.KeyValue {
+	out := []*commonpb.KeyValue{}
+
+	for k, v := range attributes {
+		av := new(commonpb.AnyValue)
+
+		// try to parse as numbers, and fall through to string
+		if i, err := strconv.ParseInt(v, 0, 64); err == nil {
+			av.Value = &commonpb.AnyValue_IntValue{IntValue: i}
+		} else if f, err := strconv.ParseFloat(v, 64); err == nil {
+			av.Value = &commonpb.AnyValue_DoubleValue{DoubleValue: f}
+		} else if b, err := strconv.ParseBool(v); err == nil {
+			av.Value = &commonpb.AnyValue_BoolValue{BoolValue: b}
+		} else {
+			av.Value = &commonpb.AnyValue_StringValue{StringValue: v}
+		}
+
+		akv := commonpb.KeyValue{
+			Key:   k,
+			Value: av,
+		}
+
+		out = append(out, &akv)
+	}
+
+	return out
+}

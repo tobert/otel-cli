@@ -156,35 +156,6 @@ func SpanStatusStringToInt(status string) tracepb.Status_StatusCode {
 	}
 }
 
-// StringMapAttrsToProtobuf takes a map of string:string, such as that from --attrs
-// and returns them in an []*commonpb.KeyValue
-func StringMapAttrsToProtobuf(attributes map[string]string) []*commonpb.KeyValue {
-	out := []*commonpb.KeyValue{}
-
-	for k, v := range attributes {
-		av := new(commonpb.AnyValue)
-
-		// try to parse as numbers, and fall through to string
-		if i, err := strconv.ParseInt(v, 0, 64); err == nil {
-			av.Value = &commonpb.AnyValue_IntValue{IntValue: i}
-		} else if f, err := strconv.ParseFloat(v, 64); err == nil {
-			av.Value = &commonpb.AnyValue_DoubleValue{DoubleValue: f}
-		} else if b, err := strconv.ParseBool(v); err == nil {
-			av.Value = &commonpb.AnyValue_BoolValue{BoolValue: b}
-		} else {
-			av.Value = &commonpb.AnyValue_StringValue{StringValue: v}
-		}
-
-		akv := commonpb.KeyValue{
-			Key:   k,
-			Value: av,
-		}
-
-		out = append(out, &akv)
-	}
-
-	return out
-}
 
 // SpanAttributesToStringMap converts the span's attributes to a string map.
 func SpanAttributesToStringMap(span *tracepb.Span) map[string]string {
