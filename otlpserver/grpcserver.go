@@ -26,10 +26,11 @@ type GrpcServer struct {
 }
 
 // NewGrpcServer takes a callback and stop function and returns a Server ready
-// to run with .Serve().
-func NewGrpcServer(cb Callback, stop Stopper) *GrpcServer {
+// to run with .Serve(). Optional grpc.ServerOption arguments can be provided
+// for TLS configuration and other server options.
+func NewGrpcServer(cb Callback, stop Stopper, opts ...grpc.ServerOption) *GrpcServer {
 	s := GrpcServer{
-		server:   grpc.NewServer(),
+		server:   grpc.NewServer(opts...),
 		callback: cb,
 		stopper:  make(chan struct{}),
 		stopdone: make(chan struct{}, 1),

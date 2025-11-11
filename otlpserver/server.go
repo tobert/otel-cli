@@ -6,10 +6,13 @@ package otlpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 
 	colv1 "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Callback is a type for the function passed to newServer that is
@@ -30,11 +33,17 @@ type OtlpServer interface {
 }
 
 // NewServer will start the requested server protocol, one of grpc, http/protobuf,
-// and http/json.
-func NewServer(protocol string, cb Callback, stop Stopper) OtlpServer {
+// and http/json. Optional TLS configuration can be provided for gRPC servers.
+func NewServer(protocol string, cb Callback, stop Stopper, tlsConf ...*tls.Config) OtlpServer {
 	switch protocol {
 	case "grpc":
-		return NewGrpcServer(cb, stop)
+		// if TLS config is provided, convert to gRPC credentials
+		var opts []grpc.ServerOption
+		if len(tlsConf) > 0 && tlsConf[0] != nil {
+			creds := credentials.NewTLS(tlsConf[0])
+			opts = append(opts, grpc.Creds(creds))
+		}
+		return NewGrpcServer(cb, stop, opts...)
 	case "http":
 		return NewHttpServer(cb, stop)
 	}
