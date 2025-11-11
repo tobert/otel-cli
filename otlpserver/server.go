@@ -9,15 +9,20 @@ import (
 	"crypto/tls"
 	"net"
 
-	colv1 "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	collogspb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
+	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-// Callback is a type for the function passed to newServer that is
+// TraceCallback is a type for the function passed to newServer that is
 // called for each incoming span.
-type Callback func(context.Context, *tracepb.Span, []*tracepb.Span_Event, *tracepb.ResourceSpans, map[string]string, map[string]string) bool
+type TraceCallback func(context.Context, *tracepb.Span, []*tracepb.Span_Event, *tracepb.ResourceSpans, map[string]string, map[string]string) bool
+
+// LogCallback is a type for the function called for each incoming log record.
+type LogCallback func(context.Context, *logspb.LogRecord, *logspb.ResourceLogs, map[string]string, map[string]string) bool
 
 // Stopper is the function passed to newServer to be called when the
 // server is shut down.
@@ -30,11 +35,12 @@ type OtlpServer interface {
 	Serve(listener net.Listener) error
 	Stop()
 	StopWait()
+	SetLogCallback(LogCallback)
 }
 
 // NewServer will start the requested server protocol, one of grpc, http/protobuf,
 // and http/json. Optional TLS configuration can be provided for gRPC servers.
-func NewServer(protocol string, cb Callback, stop Stopper, tlsConf ...*tls.Config) OtlpServer {
+func NewServer(protocol string, cb TraceCallback, stop Stopper, tlsConf ...*tls.Config) OtlpServer {
 	switch protocol {
 	case "grpc":
 		// if TLS config is provided, convert to gRPC credentials
@@ -53,7 +59,7 @@ func NewServer(protocol string, cb Callback, stop Stopper, tlsConf ...*tls.Confi
 
 // doCallback unwraps the OTLP service request and calls the callback
 // for each span in the request.
-func doCallback(ctx context.Context, cb Callback, req *colv1.ExportTraceServiceRequest, headers map[string]string, serverMeta map[string]string) bool {
+func doCallback(ctx context.Context, cb TraceCallback, req *coltracepb.ExportTraceServiceRequest, headers map[string]string, serverMeta map[string]string) bool {
 	rss := req.GetResourceSpans()
 	for _, resource := range rss {
 		scopeSpans := resource.GetScopeSpans()
@@ -65,6 +71,25 @@ func doCallback(ctx context.Context, cb Callback, req *colv1.ExportTraceServiceR
 				}
 
 				done := cb(ctx, span, events, resource, headers, serverMeta)
+				if done {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// doLogCallback unwraps the OTLP logs service request and calls the callback
+// for each log record in the request.
+func doLogCallback(ctx context.Context, cb LogCallback, req *collogspb.ExportLogsServiceRequest, headers map[string]string, serverMeta map[string]string) bool {
+	rls := req.GetResourceLogs()
+	for _, resource := range rls {
+		scopeLogs := resource.GetScopeLogs()
+		for _, sl := range scopeLogs {
+			for _, logRecord := range sl.GetLogRecords() {
+				done := cb(ctx, logRecord, resource, headers, serverMeta)
 				if done {
 					return true
 				}

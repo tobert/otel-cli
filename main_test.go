@@ -20,9 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tobert/otel-cli/otlpclient"
 	"github.com/tobert/otel-cli/otlpserver"
-	"github.com/google/go-cmp/cmp"
+	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
@@ -398,6 +399,7 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 	// these channels need to be buffered or the callback will hang trying to send
 	rcvSpan := make(chan *tracepb.Span, 100) // 100 spans is enough for anybody
 	rcvEvents := make(chan []*tracepb.Span_Event, 100)
+	rcvLog := make(chan *logspb.LogRecord, 100) // 100 logs is enough for anybody
 
 	// otlpserver calls this function for each span received
 	cb := func(ctx context.Context, span *tracepb.Span, events []*tracepb.Span_Event, rss *tracepb.ResourceSpans, headers map[string]string, meta map[string]string) bool {
@@ -412,6 +414,19 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 
 		// true tells the server we're done and it can exit its loop
 		return results.SpanCount >= fixture.Expect.SpanCount
+	}
+
+	// otlpserver calls this function for each log record received
+	logCb := func(ctx context.Context, logRecord *logspb.LogRecord, rls *logspb.ResourceLogs, headers map[string]string, meta map[string]string) bool {
+		rcvLog <- logRecord
+
+		results.ServerMeta = meta
+		results.ResourceLogs = rls
+		results.LogCount++
+		results.Headers = headers
+
+		// true tells the server we're done and it can exit its loop
+		return results.LogCount >= fixture.Expect.LogCount
 	}
 
 	// prepare TLS configuration if needed
@@ -432,6 +447,9 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 		cs = otlpserver.NewServer("http", cb, func(otlpserver.OtlpServer) {})
 	}
 	defer cs.Stop()
+
+	// set the log callback for log tests
+	cs.SetLogCallback(logCb)
 
 	serverTimeout := time.Duration(fixture.Config.TestTimeoutMs) * time.Millisecond
 	if serverTimeout == time.Duration(0) {
@@ -567,14 +585,15 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 		}
 	}
 
-	// when no spans are expected, return without reading from the channels
-	if fixture.Expect.SpanCount == 0 {
+	// when no spans or logs are expected, return without reading from the channels
+	if fixture.Expect.SpanCount == 0 && fixture.Expect.LogCount == 0 {
 		return endpoint, results
 	}
 
 	// grab the spans & events from the server off the channels it writes to
 	remainingTimeout := serverTimeout - time.Since(started)
 	var gatheredSpans int
+	var gatheredLogs int
 gather:
 	for {
 		select {
@@ -591,6 +610,12 @@ gather:
 			if gatheredSpans == results.SpanCount {
 				// TODO: it would be slightly nicer to use plural.Selectf instead of 'span(s)'
 				t.Logf("[%s] test gathered %d span(s)", fixture.Name, gatheredSpans)
+				break gather
+			}
+		case results.LogRecord = <-rcvLog:
+			gatheredLogs++
+			if gatheredLogs == results.LogCount {
+				t.Logf("[%s] test gathered %d log(s)", fixture.Name, gatheredLogs)
 				break gather
 			}
 		}

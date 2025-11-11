@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tobert/otel-cli/otlpclient"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpclient"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 

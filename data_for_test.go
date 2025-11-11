@@ -17,6 +17,7 @@ import (
 
 	"github.com/tobert/otel-cli/otelcli"
 	"github.com/tobert/otel-cli/otlpclient"
+	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
@@ -72,15 +73,18 @@ type Results struct {
 	ServerMeta    map[string]string
 	Headers       map[string]string // headers sent by the client
 	ResourceSpans *tracepb.ResourceSpans
+	ResourceLogs  *logspb.ResourceLogs
 	CliOutput     string         // merged stdout and stderr
 	CliOutputRe   *regexp.Regexp // regular expression to clean the output before comparison
 	SpanCount     int            // number of spans received
 	EventCount    int            // number of events received
+	LogCount      int            // number of log records received
 	TimedOut      bool           // true when test timed out
 	CommandFailed bool           // otel-cli was killed, did not exit() on its own
 	ExitCode      int            // the process exit code returned by otel-cli
 	Span          *tracepb.Span
 	SpanEvents    []*tracepb.Span_Event
+	LogRecord     *logspb.LogRecord
 }
 
 // Fixture represents a test fixture for otel-cli.
@@ -1383,7 +1387,7 @@ var suites = []FixtureSuite{
 			},
 			Expect: Results{
 				CliOutputRe: regexp.MustCompile(`.+`), // match and strip any content
-				CliOutput:   "\n",                      // after strip, should be just newline
+				CliOutput:   "\n",                     // after strip, should be just newline
 				ExitCode:    0,
 			},
 			CheckFuncs: []CheckFunc{
@@ -1409,7 +1413,7 @@ var suites = []FixtureSuite{
 			},
 			Expect: Results{
 				CliOutputRe: regexp.MustCompile(`.+`), // match and strip any content
-				CliOutput:   "\n",                      // after strip, should be just newline
+				CliOutput:   "\n",                     // after strip, should be just newline
 				ExitCode:    0,
 			},
 			CheckFuncs: []CheckFunc{
@@ -1465,6 +1469,46 @@ var suites = []FixtureSuite{
 						t.Errorf("expected error message to contain 'exec command failed', got: %q", r.Span.Status.Message)
 					}
 				},
+			},
+		},
+	},
+	// log command tests
+	{
+		{
+			Name: "basic log command (grpc)",
+			Config: FixtureConfig{
+				ServerProtocol: grpcProtocol,
+				CliArgs: []string{
+					"log",
+					"--endpoint", "{{endpoint}}",
+					"--service", "test-service",
+					"--body", "Test log message",
+					"--severity", "INFO",
+					"--attrs", "test.key=test.value",
+					"--fail", "--verbose",
+				},
+				TestTimeoutMs: 1000,
+			},
+			Expect: Results{
+				LogCount: 1,
+			},
+		},
+		{
+			Name: "log with different severity levels",
+			Config: FixtureConfig{
+				ServerProtocol: grpcProtocol,
+				CliArgs: []string{
+					"log",
+					"--endpoint", "{{endpoint}}",
+					"--service", "test-service",
+					"--body", "Error message",
+					"--severity", "ERROR",
+					"--fail", "--verbose",
+				},
+				TestTimeoutMs: 1000,
+			},
+			Expect: Results{
+				LogCount: 1,
 			},
 		},
 	},

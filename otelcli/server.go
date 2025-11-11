@@ -3,8 +3,8 @@ package otelcli
 import (
 	"strings"
 
-	"github.com/tobert/otel-cli/otlpserver"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpserver"
 )
 
 const defaultOtlpEndpoint = "grpc://localhost:4317"
@@ -25,7 +25,7 @@ func serverCmd(config *Config) *cobra.Command {
 
 // runServer runs the server on either grpc or http and blocks until the server
 // stops or is killed.
-func runServer(config Config, cb otlpserver.Callback, stop otlpserver.Stopper) {
+func runServer(config Config, cb otlpserver.TraceCallback, stop otlpserver.Stopper) {
 	// unlike the rest of otel-cli, server should default to localhost:4317
 	if config.Endpoint == "" {
 		config.Endpoint = defaultOtlpEndpoint

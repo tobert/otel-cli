@@ -69,6 +69,7 @@ func createRootCmd(config *Config) *cobra.Command {
 
 	// add all the subcommands to rootCmd
 	rootCmd.AddCommand(spanCmd(config))
+	rootCmd.AddCommand(logCmd(config))
 	rootCmd.AddCommand(execCmd(config))
 	rootCmd.AddCommand(statusCmd(config))
 	rootCmd.AddCommand(serverCmd(config))
@@ -101,6 +102,8 @@ func addCommonParams(cmd *cobra.Command, config *Config) {
 	cmd.Flags().StringVar(&config.Endpoint, "endpoint", defaults.Endpoint, "host and port for the desired OTLP/gRPC or OTLP/HTTP endpoint (use http:// or https:// for OTLP/HTTP)")
 	// --traces-endpoint sets the endpoint for the traces signal
 	cmd.Flags().StringVar(&config.TracesEndpoint, "traces-endpoint", defaults.TracesEndpoint, "HTTP(s) URL for traces")
+	// --logs-endpoint sets the endpoint for the logs signal
+	cmd.Flags().StringVar(&config.LogsEndpoint, "logs-endpoint", defaults.LogsEndpoint, "HTTP(s) URL for logs")
 	// --protocol allows setting the OTLP protocol instead of relying on auto-detection from URI
 	cmd.Flags().StringVar(&config.Protocol, "protocol", defaults.Protocol, "desired OTLP protocol: grpc or http/protobuf")
 	// --timeout a default timeout to use in all otel-cli operations (default 1s)
@@ -142,13 +145,18 @@ func addClientParams(cmd *cobra.Command, config *Config) {
 	cmd.Flags().BoolVarP(&config.TraceparentPrintExport, "tp-export", "p", defaults.TraceparentPrintExport, "same as --tp-print but it puts an 'export ' in front so it's more convinenient to source in scripts")
 }
 
+// addServiceParams adds the --service flag which is common across all OTel signals.
+func addServiceParams(cmd *cobra.Command, config *Config) {
+	defaults := DefaultConfig()
+	// --service / -s
+	cmd.Flags().StringVarP(&config.ServiceName, "service", "s", defaults.ServiceName, "set the name of the service/application")
+}
+
 func addSpanParams(cmd *cobra.Command, config *Config) {
 	defaults := DefaultConfig()
 
-	// --name / -s
+	// --name / -n
 	cmd.Flags().StringVarP(&config.SpanName, "name", "n", defaults.SpanName, "set the name of the span")
-	// --service / -n
-	cmd.Flags().StringVarP(&config.ServiceName, "service", "s", defaults.ServiceName, "set the name of the application sent on the traces")
 	// --kind / -k
 	cmd.Flags().StringVarP(&config.Kind, "kind", "k", defaults.Kind, "set the trace kind, e.g. internal, server, client, producer, consumer")
 
@@ -157,6 +165,7 @@ func addSpanParams(cmd *cobra.Command, config *Config) {
 	cmd.Flags().StringVar(&config.ForceSpanId, "force-span-id", defaults.ForceSpanId, "expert: force the span id to be the one provided in hex")
 	cmd.Flags().StringVar(&config.ForceParentSpanId, "force-parent-span-id", defaults.ForceParentSpanId, "expert: force the parent span id to be the one provided in hex")
 
+	addServiceParams(cmd, config)
 	addSpanStatusParams(cmd, config)
 }
 
