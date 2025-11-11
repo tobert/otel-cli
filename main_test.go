@@ -414,10 +414,20 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 		return results.SpanCount >= fixture.Expect.SpanCount
 	}
 
+	// prepare TLS configuration if needed
+	var tlsConf *tls.Config
+	if fixture.Config.ServerTLSEnabled {
+		tlsConf = fixture.TlsData.serverTLSConf.Clone()
+		if fixture.Config.ServerTLSAuthEnabled {
+			tlsConf.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+	}
+
+	// create server with TLS config if needed (gRPC requires it, HTTP uses TLS listener)
 	var cs otlpserver.OtlpServer
 	switch fixture.Config.ServerProtocol {
 	case grpcProtocol:
-		cs = otlpserver.NewServer("grpc", cb, func(otlpserver.OtlpServer) {})
+		cs = otlpserver.NewServer("grpc", cb, func(otlpserver.OtlpServer) {}, tlsConf)
 	case httpProtocol:
 		cs = otlpserver.NewServer("http", cb, func(otlpserver.OtlpServer) {})
 	}
@@ -443,11 +453,8 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 	// port :0 means randomly assigned port, which we copy into {{endpoint}}
 	var listener net.Listener
 	var err error
-	if fixture.Config.ServerTLSEnabled {
-		tlsConf := fixture.TlsData.serverTLSConf.Clone()
-		if fixture.Config.ServerTLSAuthEnabled {
-			tlsConf.ClientAuth = tls.RequireAndVerifyClientCert
-		}
+	if fixture.Config.ServerTLSEnabled && fixture.Config.ServerProtocol == httpProtocol {
+		// HTTP needs a TLS listener; gRPC uses credentials passed to server
 		listener, err = tls.Listen("tcp", "localhost:0", tlsConf)
 	} else {
 		listener, err = net.Listen("tcp", "localhost:0")
