@@ -34,6 +34,8 @@ func NewHttpServer(cb TraceCallback, stop Stopper) *HttpServer {
 }
 
 // ServeHTTP routes requests to the appropriate handler based on URL path.
+// Routes /v1/traces to trace handler and /v1/logs to log handler per OTLP spec.
+// For backwards compatibility, all other paths are treated as trace endpoints.
 func (hs *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Route based on OTLP specification paths
 	switch req.RequestURI {
