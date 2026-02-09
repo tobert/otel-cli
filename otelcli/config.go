@@ -373,10 +373,15 @@ func (c Config) SoftLogIfErr(err error) {
 }
 
 // SoftFail calls through to softLog (which logs only if otel-cli was run with the --verbose
-// flag), then immediately exits - with status -1 by default, or 1 if --fail was
-// set (a la `curl --fail`)
+// flag), then immediately exits. When a child process exit code has been captured (e.g. from
+// exec), that code is preserved. Otherwise exits 0 by default, or 1 with --fail.
 func (c Config) SoftFail(format string, a ...interface{}) {
 	c.SoftLog(format, a...)
+
+	// preserve exec child exit code when available (#360)
+	if Diag.ExecExitCode != 0 {
+		os.Exit(Diag.ExecExitCode)
+	}
 
 	if c.Fail {
 		os.Exit(1)

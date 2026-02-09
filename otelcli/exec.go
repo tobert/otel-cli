@@ -152,6 +152,13 @@ func doExec(cmd *cobra.Command, args []string) {
 		span.Attributes = append(span.Attributes, pidAttrs...)
 	}
 
+	// capture the child's exit code before OTLP export so SoftFail can use it (#360)
+	if child.ProcessState != nil {
+		Diag.ExecExitCode = child.ProcessState.ExitCode()
+	} else {
+		Diag.ExecExitCode = 127
+	}
+
 	cancelCtxDeadline()
 	close(signals)
 	<-signalsDone
@@ -169,16 +176,6 @@ func doExec(cmd *cobra.Command, args []string) {
 	_, err = client.Stop(ctx)
 	if err != nil {
 		config.SoftFail("client.Stop() failed: %s", err)
-	}
-
-	// set the global exit code so main() can grab it and os.Exit() properly
-	// ProcessState is nil if the command failed to start
-	if child.ProcessState != nil {
-		Diag.ExecExitCode = child.ProcessState.ExitCode()
-	} else {
-		// command failed to start (e.g., command not found)
-		// use exit code 127 to match shell behavior for "command not found"
-		Diag.ExecExitCode = 127
 	}
 
 	config.PropagateTraceparent(span, os.Stdout)
