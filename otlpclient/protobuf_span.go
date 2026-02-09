@@ -164,8 +164,9 @@ func StringMapAttrsToProtobuf(attributes map[string]string) []*commonpb.KeyValue
 	for k, v := range attributes {
 		av := new(commonpb.AnyValue)
 
-		// try to parse as numbers, and fall through to string
-		if i, err := strconv.ParseInt(v, 0, 64); err == nil {
+		// try to parse as decimal numbers, and fall through to string
+		// base 10 only: base 0 would auto-detect hex/octal prefixes (#373)
+		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
 			av.Value = &commonpb.AnyValue_IntValue{IntValue: i}
 		} else if f, err := strconv.ParseFloat(v, 64); err == nil {
 			av.Value = &commonpb.AnyValue_DoubleValue{DoubleValue: f}

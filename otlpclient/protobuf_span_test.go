@@ -192,6 +192,9 @@ func TestCliAttrsToOtel(t *testing.T) {
 		"test 5 - bool, false": "false",
 		"test 6 - bool, True":  "True",
 		"test 7 - bool, False": "False",
+		"test 8 - hex string":  "0x0",
+		"test 9 - hex string2": "0xFF",
+		"test 10 - octal str":  "0o777",
 	}
 
 	otelAttrs := StringMapAttrsToProtobuf(testAttrs)
@@ -227,6 +230,21 @@ func TestCliAttrsToOtel(t *testing.T) {
 		case "test 7 - bool, False":
 			if attr.Value.GetBoolValue() != false {
 				t.Errorf("expected value '%s' for key '%s' but got %t", testAttrs[key], key, attr.Value.GetBoolValue())
+			}
+		case "test 8 - hex string":
+			// #373: 0x0 should be treated as a string, not parsed as hex int
+			if attr.Value.GetStringValue() != "0x0" {
+				t.Errorf("expected string value '0x0' for key '%s' but got parsed as different type", key)
+			}
+		case "test 9 - hex string2":
+			// #373: 0xFF should be treated as a string, not parsed as hex int
+			if attr.Value.GetStringValue() != "0xFF" {
+				t.Errorf("expected string value '0xFF' for key '%s' but got parsed as different type", key)
+			}
+		case "test 10 - octal str":
+			// 0o777 should be treated as a string, not parsed as octal int
+			if attr.Value.GetStringValue() != "0o777" {
+				t.Errorf("expected string value '0o777' for key '%s' but got parsed as different type", key)
 			}
 		}
 	}
