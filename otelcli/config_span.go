@@ -1,6 +1,7 @@
 package otelcli
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -42,7 +43,10 @@ func (c Config) NewProtobufSpan() *tracepb.Span {
 		tp := c.LoadTraceparent()
 		if tp.Initialized {
 			span.TraceId = tp.TraceId
-			span.ParentSpanId = tp.SpanId
+			// only set parent span id when the traceparent has a real (non-zero) span id (#23)
+			if !bytes.Equal(tp.SpanId, otlpclient.GetEmptySpanId()) {
+				span.ParentSpanId = tp.SpanId
+			}
 		}
 	} else {
 		span.TraceId = otlpclient.GetEmptyTraceId()
