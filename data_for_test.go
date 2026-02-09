@@ -568,6 +568,32 @@ var suites = []FixtureSuite{
 			},
 		},
 	},
+	// #360: exec child exit code should propagate even when OTLP export fails
+	{
+		{
+			Name: "#360 exec child exit code preserved when export fails",
+			Config: FixtureConfig{
+				CliArgs: []string{"exec",
+					"--endpoint", "{{endpoint}}",
+					"--timeout", "100ms",
+					"--", "/bin/sh", "-c", "exit 42",
+				},
+				StopServerBeforeExec: true,
+				TestTimeoutMs:        2000,
+				IsLongTest:           true,
+			},
+			Expect: Results{
+				Config: otelcli.DefaultConfig(),
+			},
+			CheckFuncs: []CheckFunc{
+				func(t *testing.T, f Fixture, r Results) {
+					if r.ExitCode != 42 {
+						t.Errorf("expected exit code 42 from child process, got %d", r.ExitCode)
+					}
+				},
+			},
+		},
+	},
 	// otel-cli span with no OTLP config should do and print nothing
 	{
 		{
