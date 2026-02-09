@@ -1243,6 +1243,32 @@ var suites = []FixtureSuite{
 			},
 		},
 	},
+	// #23: --tp-ignore-env should not produce a zero-valued parent span id
+	{
+		{
+			Name: "#23 --tp-ignore-env should not send zero parent span id",
+			Config: FixtureConfig{
+				CliArgs: []string{
+					"span",
+					"--endpoint", "{{endpoint}}",
+					"--tp-ignore-env",
+					"--name", "test-tp-ignore",
+				},
+				Env: map[string]string{
+					"TRACEPARENT": "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
+				},
+			},
+			Expect: Results{
+				Config: otelcli.DefaultConfig(),
+				SpanData: map[string]string{
+					"trace_id":       "*",
+					"span_id":        "*",
+					"parent_span_id": "",
+				},
+				SpanCount: 1,
+			},
+		},
+	},
 	// full-system test --otlp-headers makes it to grpc/http servers
 	{
 		{
