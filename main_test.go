@@ -555,7 +555,7 @@ func runOtelCli(t *testing.T, fixture Fixture) (string, Results) {
 		err = json.Unmarshal(cliOut.Bytes(), &results)
 		if err != nil {
 			t.Errorf("[%s] parsing otel-cli status output failed: %s", fixture.Name, err)
-			t.Logf("[%s] output received: %q", fixture.Name, cliOut)
+			t.Logf("[%s] output received: %q", fixture.Name, cliOut.String())
 			return endpoint, results
 		}
 
