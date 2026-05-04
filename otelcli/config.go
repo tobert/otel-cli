@@ -368,7 +368,7 @@ func (c Config) SoftLog(format string, a ...interface{}) {
 // SoftLog/SoftFail directly in methods that don't need a config handle.
 func (c Config) SoftLogIfErr(err error) {
 	if err != nil {
-		c.SoftLog(err.Error())
+		c.SoftLog("%s", err.Error())
 	}
 }
 
