@@ -1,6 +1,6 @@
 module github.com/tobert/otel-cli
 
-go 1.21
+go 1.26
 
 toolchain go1.22.4
 
