@@ -18,7 +18,7 @@ func StartClient(ctx context.Context, config Config) (context.Context, otlpclien
 	if config.Protocol != "" && config.Protocol != "grpc" && config.Protocol != "http/protobuf" {
 		err := fmt.Errorf("invalid protocol setting %q", config.Protocol)
 		Diag.Error = err.Error()
-		config.SoftFail(err.Error())
+		config.SoftFail("%s", err.Error())
 	}
 
 	endpointURL := config.GetEndpoint()
