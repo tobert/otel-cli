@@ -1070,6 +1070,28 @@ var suites = []FixtureSuite{
 			},
 		},
 	},
+	// #390: otel-cli accepts a lenient (upper-case) TRACEPARENT but only ever
+	// emits strict, spec-valid lower-case W3C into the child process env.
+	{
+		{
+			Name: "otel-cli exec normalizes an upper-case TRACEPARENT into the child env",
+			Config: FixtureConfig{
+				CliArgs: []string{
+					"exec", "--endpoint", "{{endpoint}}",
+					"--force-span-id", "023eee2731392b4d",
+					"--",
+					"sh", "-c", "echo $TRACEPARENT"},
+				Env: map[string]string{
+					"TRACEPARENT": "00-E39280F2980AF3A8600AE98C74F2DABF-BBBBBBBBBBBBBBBB-01",
+				},
+			},
+			Expect: Results{
+				Config:    otelcli.DefaultConfig().WithEndpoint("{{endpoint}}"),
+				CliOutput: "00-e39280f2980af3a8600ae98c74f2dabf-023eee2731392b4d-01\n",
+				SpanCount: 1,
+			},
+		},
+	},
 	// validate OTEL_EXPORTER_OTLP_PROTOCOL / --protocol
 	{
 		// --protocol

@@ -78,15 +78,16 @@ func doExec(cmd *cobra.Command, args []string) {
 	childEnv := []string{}
 
 	// set the traceparent to the current span to be available to the child process
+	appendChildEnv := func(key, value string) { childEnv = append(childEnv, key+"="+value) }
 	var tp traceparent.Traceparent
 	if config.GetIsRecording() {
 		tp = otlpclient.TraceparentFromProtobufSpan(span, config.GetIsRecording())
-		childEnv = append(childEnv, fmt.Sprintf("TRACEPARENT=%s", tp.Encode()))
+		injectTraceparent(tp, appendChildEnv)
 		// when not recording, and a traceparent is available, pass it through
 	} else if !config.TraceparentIgnoreEnv {
-		tp := config.LoadTraceparent()
-		if tp.Initialized {
-			childEnv = append(childEnv, fmt.Sprintf("TRACEPARENT=%s", tp.Encode()))
+		passthrough := config.LoadTraceparent()
+		if passthrough.Initialized {
+			injectTraceparent(passthrough, appendChildEnv)
 		}
 	}
 
