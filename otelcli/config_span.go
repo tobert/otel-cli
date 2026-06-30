@@ -89,7 +89,7 @@ func (c Config) LoadTraceparent() traceparent.Traceparent {
 
 	if !c.TraceparentIgnoreEnv {
 		var err error
-		tp, err = traceparent.LoadFromEnv()
+		tp, err = envCarrierTraceparent()
 		if err != nil {
 			Diag.Error = err.Error()
 		}
