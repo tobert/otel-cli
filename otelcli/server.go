@@ -3,8 +3,8 @@ package otelcli
 import (
 	"strings"
 
-	"github.com/tobert/otel-cli/otlpserver"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpserver"
 )
 
 const defaultOtlpEndpoint = "grpc://localhost:4317"

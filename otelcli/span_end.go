@@ -3,8 +3,8 @@ package otelcli
 import (
 	"os"
 
-	"github.com/tobert/otel-cli/w3c/traceparent"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/w3c/traceparent"
 )
 
 // spanEndCmd represents the span event command

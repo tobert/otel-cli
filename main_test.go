@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tobert/otel-cli/otlpclient"
 	"github.com/tobert/otel-cli/otlpserver"
-	"github.com/google/go-cmp/cmp"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
