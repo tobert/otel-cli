@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/tobert/otel-cli/otlpclient"
-	"github.com/tobert/otel-cli/otlpserver"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
+	"github.com/tobert/otel-cli/otlpclient"
+	"github.com/tobert/otel-cli/otlpserver"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 

@@ -1435,7 +1435,7 @@ var suites = []FixtureSuite{
 			},
 			Expect: Results{
 				CliOutputRe: regexp.MustCompile(`.+`), // match and strip any content
-				CliOutput:   "\n",                      // after strip, should be just newline
+				CliOutput:   "\n",                     // after strip, should be just newline
 				ExitCode:    0,
 			},
 			CheckFuncs: []CheckFunc{
@@ -1461,7 +1461,7 @@ var suites = []FixtureSuite{
 			},
 			Expect: Results{
 				CliOutputRe: regexp.MustCompile(`.+`), // match and strip any content
-				CliOutput:   "\n",                      // after strip, should be just newline
+				CliOutput:   "\n",                     // after strip, should be just newline
 				ExitCode:    0,
 			},
 			CheckFuncs: []CheckFunc{
