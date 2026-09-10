@@ -45,12 +45,41 @@ docker pull ghcr.io/tobert/otel-cli:latest
 docker run ghcr.io/tobert/otel-cli:latest status
 ```
 
-To use the brew tap e.g. on MacOS:
+To use the brew tap on macOS or Linux:
 
 ```shell
-brew tap tobert/otel-cli
-brew install otel-cli
+brew install tobert/otel-cli/otel-cli
 ```
+
+### Verify a download
+
+Every release is born signed in public CI: the signing identity *is* the release
+workflow at that tag, witnessed by the Sigstore transparency log — no maintainer
+key to steal or trust. Two independent checks; either one is sufficient.
+
+With the [`gh` CLI](https://cli.github.com/), SLSA build provenance is one command
+against any file (or the image) from the release:
+
+```shell
+gh attestation verify otel-cli_0.6.0_linux_amd64.tar.gz -R tobert/otel-cli
+gh attestation verify oci://ghcr.io/tobert/otel-cli:0.6.0 -R tobert/otel-cli
+```
+
+With [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) ≥ 2.5
+(no GitHub tooling needed), verify the signed checksum manifest once and it
+covers every file it lists. Grab `checksums.txt` and `checksums.txt.sigstore.json`
+from the release, substituting the tag you downloaded in the identity:
+
+```shell
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/tobert/otel-cli/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  checksums.txt
+sha256sum -c --ignore-missing checksums.txt
+```
+
+Each release page carries the same commands with the tag filled in.
 
 Alternatively, clone the repo and build it locally:
 
@@ -313,24 +342,37 @@ We welcome contributions! This project uses agent-assisted development starting 
 
 ## Releases
 
-Releases are managed by goreleaser. Currently this is limited to @tobert due to rules in
-the tobert organization. For now releases are not automated, but will be by the time
-a v1.0 rolls out and the test suite is robust enough that we feel confident.
+Releases are cut by GitHub Actions: pushing a `v*` tag runs
+[release.yml](.github/workflows/release.yml), which drives goreleaser
+([.goreleaser.yml](.goreleaser.yml)) to build every platform, publish the GitHub
+release with archives, apk/deb/rpm packages, checksums and an SPDX SBOM, push the
+Homebrew formula to [tobert/homebrew-otel-cli](https://github.com/tobert/homebrew-otel-cli),
+and then builds, signs, attests and tags the multiarch `ghcr.io/tobert/otel-cli` image.
+Everything is signed keylessly with cosign and carries SLSA build provenance; see
+[Verify a download](#verify-a-download).
 
-Testing the release: `goreleaser release --snapshot --rm-dist`
-
-To release, a GitHub personal access token is required. The release also needs to be tagged
-in git.
+To cut a release:
 
 ```shell
-docker login ghcr.io # log into GitHub Docker repo
-gh repo list         # make sure GitHub PAT is working
-git checkout main    # release tags must be off the main branch
-git pull --rebase    # get the latest HEAD
-git tag v0.1.1       # tag HEAD with the next version
-git push --tags      # push new tag up to GitHub
-goreleaser release --rm-dist
+git checkout main && git pull --rebase   # release tags come off main
+# update CHANGELOG.md for the new version and merge that first
+git tag v0.6.0                            # a -rc.N suffix makes a GitHub prerelease and skips the tap
+git push origin v0.6.0                    # the tag push triggers release.yml
+gh run watch                              # optional: follow along
 ```
+
+To smoke the whole matrix without publishing, run the workflow by hand from the
+Actions tab (`workflow_dispatch`), or locally:
+
+```shell
+goreleaser release --snapshot --clean --skip=publish,sign,sbom
+```
+
+The workflow needs one repository secret, `HOMEBREW_TAP_GITHUB_TOKEN`: a
+fine-grained personal access token with *Contents: read and write* on the tap
+repository only. `GITHUB_TOKEN` covers the release and the container registry.
+The workflow refuses to start a tagged release without it rather than fail after
+the GitHub release is already published.
 
 ## License
 

@@ -12,6 +12,18 @@ Begin agent-assisted development era.
 
 ### Changed
 
+- Releases are cut by GitHub Actions on a `v*` tag: goreleaser publishes the
+  release and Homebrew formula, and the workflow builds, cosign-signs, attests
+  and tags the multiarch ghcr.io image (version tags land after signing so the
+  package page's "latest" is always pullable)
+- Release artifacts are signed keylessly (cosign bundle over checksums.txt),
+  carry SLSA build provenance, and ship an SPDX SBOM; `gh attestation verify`
+  and `cosign verify-blob` instructions on each release page and in the README
+- CI pins actions by commit SHA, checks gofmt/vet/tidy, and runs a goreleaser
+  snapshot on every pull request so the release config cannot rot
+- Container image tags gain bare semver (`0.6.0`, `0.6`) alongside `v0.6.0` and
+  `latest`; base image is a digest-pinned Alpine 3.24
+- Dependabot keeps action pins, the base image digest, and Go modules current
 - Establish agent-assisted development practices
 - Emphasize functional testing and self-contained design
 - Documentation of project philosophy and structure for agents
