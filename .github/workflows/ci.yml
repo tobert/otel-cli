@@ -1,23 +1,88 @@
+# The correctness gate on every pull request and every push to main: build,
+# vet, gofmt, tidy go.mod, and the functional suite (main_test.go execs the
+# built binary, so the build comes first). A second job runs the release
+# config as a snapshot so .goreleaser.yml can't rot between releases —
+# release.yml is the real thing on a tag; this is quick feedback on every change.
 name: CI
+
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # The job id is `build` because main's ruleset requires a status check with
+  # that context name; renaming it silently blocks every PR.
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
-      - name: Setup
-        uses: actions/setup-go@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '>=1.20.0'
-      # otel-cli's main test needs the binary built ahead of time
-      # also this validates it can acutally build before we get there
+          go-version-file: go.mod
+
+      # The release runs `go mod verify`, never `tidy` (a tidy at release time
+      # would ship a tree that differs from the tag), so tidiness is enforced
+      # here where a diff is cheap to fix.
+      - name: go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "gofmt needs to run on:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      # Same -s -w ldflags the release uses, so the build under test is the
+      # build that ships.
       - name: Build
-        # build with -s -w to reduce binary size and verify that build in test
         run: go build -v -ldflags="-s -w -X main.version=test -X main.commit=${{ github.sha }}"
+
       - name: Test
         run: go test -v ./...
+
+  release-snapshot:
+    name: goreleaser snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # `goreleaser check` would be the cheap gate, but it exits non-zero on the
+      # deliberate `brews` deprecation (see .goreleaser.yml). A snapshot renders
+      # every artifact including the formula, which is the stronger check anyway.
+      - name: GoReleaser (snapshot)
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --snapshot --skip=publish,sign,sbom
+        env:
+          HOMEBREW_TAP_GITHUB_TOKEN: ""
+
+      - name: Smoke (run the binary)
+        run: |
+          bin=$(jq -r '.[] | select(.type == "Binary" and .goos == "linux" and .goarch == "amd64") | .path' dist/artifacts.json)
+          [ -n "$bin" ] || { echo "no linux/amd64 binary in dist/artifacts.json"; exit 1; }
+          "$bin" version

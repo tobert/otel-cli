@@ -1,27 +1,33 @@
+# otel-cli release configuration for GoReleaser v2.
+#
+# .github/workflows/release.yml drives this on every `v*` tag (and runs it as a
+# snapshot on workflow_dispatch to smoke the matrix without publishing). Locally:
+#
+#   goreleaser release --snapshot --clean --skip=publish,sign,sbom
+#
+# GoReleaser owns the binaries, archives, Linux packages, checksums, SBOM, the
+# keyless cosign signature over checksums.txt, the GitHub release, and the
+# Homebrew formula. The container image is deliberately NOT built here: the
+# workflow assembles it from the Linux binaries GoReleaser leaves in dist/, so
+# that the image can be pushed by digest, signed, attested, and only THEN tagged
+# — GoReleaser's docker pipeline signs after tagging, which leaves the ghcr
+# package page advertising a signature artifact as "latest" (kaibo v0.2.0-rc.4
+# hit exactly that). Keep the image out of this file.
 version: 2
+
+project_name: otel-cli
 
 before:
   hooks:
-    - go mod tidy
+    # Verify, never tidy: a hook that rewrites go.mod would release a tree that
+    # differs from the tag. CI enforces tidiness on every pull request instead.
+    - go mod verify
 
-checksum:
-  name_template: 'checksums.txt'
-
-snapshot:
-  version_template: 'SNAPSHOT-{{ .Commit }}'
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^demos:'
-      - '^configs:'
-      - Merge pull request
-      - Merge branch
-      - go mod tidy
+report_sizes: true
 
 builds:
-  - env:
+  - id: otel-cli
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -31,22 +37,32 @@ builds:
     goarch:
       - amd64
       - arm64
-      - 386
-    goarm:
-      - 7
+      - "386"
     ignore:
       - goos: darwin
-        goarch: 386
+        goarch: "386"
       - goos: freebsd
         goarch: arm64
+    flags:
+      - -trimpath
     mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
-       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }}
+      - -s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }} -X main.date={{ .CommitDate }}
+
+archives:
+  - id: archives
+    formats: ["tar.gz"]
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    builds_info:
+      group: root
+      owner: root
 
 nfpms:
   - package_name: otel-cli
     homepage: https://github.com/tobert/otel-cli
-    maintainer: Amy Tobey <tobert@github.com>
+    maintainer: Amy Tobey <tobert@gmail.com>
     description: OpenTelemetry CLI Application (Server & Client)
     license: Apache 2.0
     formats:
@@ -54,66 +70,81 @@ nfpms:
       - deb
       - rpm
 
-archives:
-  - formats: [ "tar.gz" ]
-    format_overrides:
-      - goos: windows
-        formats: zip
-    builds_info:
-      group: root
-      owner: root
+checksum:
+  name_template: "checksums.txt"
 
+# One SBOM for the whole release, cataloged from go.mod/go.sum (every target
+# shares the same module graph), rather than one document per archive.
+# `artifacts: any` + one `documents` entry is the documented shape for that
+# (verified on v2.18: exactly one SBOM, listed in checksums.txt). syft is
+# installed by the workflow; local snapshot runs pass --skip=sbom.
+sboms:
+  - id: source
+    artifacts: any
+    documents:
+      - "{{ .ProjectName }}_{{ .Version }}_sbom.spdx.json"
+    cmd: syft
+    args: ["dir:.", "--exclude", "./dist/**", "--output", "spdx-json=$document"]
+
+# Keyless cosign over checksums.txt only: verify the manifest once and it covers
+# every file it lists. The .sigstore.json bundle is self-contained (certificate,
+# signature, Rekor entry) so verification works offline. cosign v3 ignores the
+# legacy --output-signature/--output-certificate pair in bundle mode, hence the
+# single --bundle flag. The signing identity is the release workflow at the tag,
+# minted from the job's id-token — there is no key to store or leak.
+signs:
+  - id: checksums
+    artifacts: checksum
+    cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--yes", "--bundle=${signature}", "${artifact}"]
+
+changelog:
+  # GitHub's auto-generated notes (grouped by PR, with contributors). The header
+  # above them comes from .github/release-body.md via --release-header-tmpl.
+  use: github-native
+
+release:
+  github:
+    owner: tobert
+    name: otel-cli
+  # A semver prerelease tag (v1.0.0-rc.1) becomes a GitHub prerelease and is
+  # never marked latest, so the Releases page always leads with a stable build.
+  prerelease: auto
+  make_latest: "{{ not .Prerelease }}"
+  # A re-run after a partial failure (say, the Homebrew push) must be able to
+  # finish the same release instead of tripping over assets it already uploaded.
+  replace_existing_artifacts: true
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-SNAPSHOT-{{ .ShortCommit }}"
+
+# Formula, not cask, on purpose: GoReleaser deprecates `brews` in favor of
+# `homebrew_casks`, but casks are macOS-only and the existing tap serves Linux
+# users too. Moving to a cask would also make every current `brew install
+# otel-cli` user reinstall. Tracked in the repo issues; revisit when GoReleaser
+# v3 removes `brews`. This means `goreleaser check` reports a deprecation — CI
+# validates the config with a snapshot build instead.
 brews:
-  # This means the repository must be tobert/homebrew-otel-cli
-  - name: "otel-cli"
+  - name: otel-cli
+    ids: ["archives"]
     url_template: "https://github.com/tobert/otel-cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    # The repository must be tobert/homebrew-otel-cli for `brew tap tobert/otel-cli`.
+    # GITHUB_TOKEN is scoped to this repo, so pushing the formula into the tap
+    # takes a separate fine-grained PAT with Contents: write on the tap repo.
     repository:
-      owner: "tobert"
-      name: "homebrew-otel-cli"
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      owner: tobert
+      name: homebrew-otel-cli
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
     commit_author:
-      name: "tobert"
-      email: "tobert@gmail.com"
-    homepage: "https://github.com/tobert/otel-cli"
+      name: tobert
+      email: tobert@gmail.com
+    commit_msg_template: "otel-cli {{ .Tag }}"
+    homepage: https://github.com/tobert/otel-cli
     description: "OpenTelemetry command-line tool for sending events from shell scripts & similar environments"
-    license: "Apache-2.0"
-    # If set to auto, the release will not be uploaded to the homebrew tap
-    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
-    skip_upload: "auto"
-
-dockers:
-  - image_templates:
-    - "ghcr.io/tobert/otel-cli:{{ .Tag }}-amd64"
-    dockerfile: release/Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-  - image_templates:
-    - "ghcr.io/tobert/otel-cli:{{ .Tag }}-arm64v8"
-    dockerfile: release/Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64/v8"
-
-docker_manifests:
-  - name_template: "ghcr.io/tobert/otel-cli:{{ .Tag }}"
-    image_templates:
-    - "ghcr.io/tobert/otel-cli:{{ .Tag }}-amd64"
-    - "ghcr.io/tobert/otel-cli:{{ .Tag }}-arm64v8"
-  - name_template: "ghcr.io/tobert/otel-cli:latest"
-    image_templates:
-    - "ghcr.io/tobert/otel-cli:{{ .Tag }}-amd64"
-    - "ghcr.io/tobert/otel-cli:{{ .Tag }}-arm64v8"
-    use: docker
+    license: Apache-2.0
+    test: |
+      system "#{bin}/otel-cli", "version"
+    # auto: a prerelease tag is released on GitHub but never pushed to the tap.
+    skip_upload: auto

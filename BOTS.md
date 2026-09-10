@@ -335,18 +335,20 @@ When creating a PR, write a good description - it becomes the squash commit mess
 - **MINOR**: New features, significant changes
 - **PATCH**: Bug fixes, small improvements
 
-**Releases are managed by goreleaser:**
+**Releases are cut by GitHub Actions on a tag push:**
 
-- Version is set via git tags
-- Release process documented in README.md
-- CHANGELOG.md is updated with each release
-- goreleaser handles building for multiple platforms
+- Pushing a `v*` tag runs `.github/workflows/release.yml`, which drives goreleaser
+  (`.goreleaser.yml`) for binaries, packages, SBOM, signing, the GitHub release and the
+  Homebrew formula, then builds, signs, attests and tags the ghcr image
+- A `-rc.N` tag is a GitHub prerelease: it skips the Homebrew tap and never becomes `latest`
+- `workflow_dispatch` runs the same workflow as a snapshot that publishes nothing
+- The full procedure and the one required secret are in README.md under "Releases"
 
 **When bumping versions:**
 
-1. Update CHANGELOG.md with changes
-2. Tag the release: `git tag v0.X.Y`
-3. Let maintainers handle goreleaser
+1. Update CHANGELOG.md with changes and merge that to main first
+2. Tag the release off main: `git tag v0.X.Y && git push origin v0.X.Y`
+3. Watch the `release` workflow; nothing else is manual
 
 ## 🎯 When Working on otel-cli
 

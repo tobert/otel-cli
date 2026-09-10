@@ -1,0 +1,24 @@
+# Keeps the SHA-pinned actions, the digest-pinned base image, and the Go module
+# graph moving. Pins without a bumper rot; this is the bumper.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-modules:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /release
+    schedule:
+      interval: weekly
