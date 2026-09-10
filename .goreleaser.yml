@@ -62,7 +62,7 @@ archives:
 nfpms:
   - package_name: otel-cli
     homepage: https://github.com/tobert/otel-cli
-    maintainer: Amy Tobey <tobert@github.com>
+    maintainer: Amy Tobey <tobert@gmail.com>
     description: OpenTelemetry CLI Application (Server & Client)
     license: Apache 2.0
     formats:
