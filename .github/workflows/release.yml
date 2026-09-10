@@ -19,7 +19,9 @@
 # is signed and attested by the same machinery. Verification commands live in
 # .github/release-body.md (rendered onto each release page) and the README.
 #
-# Publishing, signing, and attesting are all gated on the ref being a tag, so a
+# Publishing, signing, and attesting are all gated on the EVENT being a tag
+# push, not merely on the ref being a tag: `gh workflow run release.yml --ref
+# v0.6.0` is a dispatch whose ref_type is 'tag', and must stay a snapshot. So a
 # dispatch run never publishes — but note that the job's permissions (including
 # id-token) are granted on dispatch too; the gating is by step condition.
 name: release
@@ -56,7 +58,7 @@ jobs:
       # cannot push to the tap repo; this is a fine-grained PAT with Contents:
       # write on tobert/homebrew-otel-cli, stored as a repository secret.
       - name: Preflight (tap token present)
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
         run: |
@@ -64,6 +66,16 @@ jobs:
             echo "::error::HOMEBREW_TAP_GITHUB_TOKEN secret is not set; refusing to release without the Homebrew tap push"
             exit 1
           fi
+
+      # Fail before anything is published: a binary that compiles but crashes at
+      # startup should stop the release here, not after GoReleaser has created
+      # the GitHub release and pushed the tap. The shipped binaries are smoked
+      # again below.
+      - name: Smoke (build and run before publishing)
+        run: |
+          go build -ldflags="-s -w -X main.version=prerelease-smoke -X main.commit=${{ github.sha }}"
+          ./otel-cli version
+          rm ./otel-cli
 
       - name: Install syft (SBOM)
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
@@ -80,7 +92,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: ${{ github.ref_type == 'tag' && 'release --clean --release-header-tmpl=.github/release-body.md' || 'release --clean --snapshot --skip=sign' }}
+          args: ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'release --clean --release-header-tmpl=.github/release-body.md' || 'release --clean --snapshot --skip=sign' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
@@ -89,7 +101,7 @@ jobs:
       # startup, so execute the linux/amd64 binary the release will ship.
       - name: Smoke (run the binary)
         run: |
-          bin=$(jq -r '.[] | select(.type == "Binary" and .goos == "linux" and .goarch == "amd64") | .path' dist/artifacts.json)
+          bin=$(jq -r 'first(.[] | select(.type == "Binary" and .goos == "linux" and .goarch == "amd64") | .path)' dist/artifacts.json)
           [ -n "$bin" ] || { echo "no linux/amd64 binary in dist/artifacts.json"; exit 1; }
           "$bin" version
 
@@ -98,7 +110,7 @@ jobs:
       # here — hence `|| true` plus a grep instead of a plain run.
       - name: Smoke (assert fully static)
         run: |
-          bin=$(jq -r '.[] | select(.type == "Binary" and .goos == "linux" and .goarch == "amd64") | .path' dist/artifacts.json)
+          bin=$(jq -r 'first(.[] | select(.type == "Binary" and .goos == "linux" and .goarch == "amd64") | .path)' dist/artifacts.json)
           out=$(ldd "$bin" 2>&1 || true)
           echo "$out"
           grep -q "not a dynamic executable" <<<"$out"
@@ -108,7 +120,7 @@ jobs:
       # assets): `gh attestation verify <file> -R tobert/otel-cli` is the
       # one-command per-file verification path.
       - name: Attest build provenance
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-checksums: dist/checksums.txt
@@ -121,7 +133,7 @@ jobs:
       - name: Stage per-arch binaries
         run: |
           stage() { # <goarch> <docker-arch>
-            bin=$(jq -r --arg arch "$1" '.[] | select(.type == "Binary" and .goos == "linux" and .goarch == $arch) | .path' dist/artifacts.json)
+            bin=$(jq -r --arg arch "$1" 'first(.[] | select(.type == "Binary" and .goos == "linux" and .goarch == $arch) | .path)' dist/artifacts.json)
             [ -n "$bin" ] || { echo "no linux/$1 binary in dist/artifacts.json"; exit 1; }
             install -D -m 0755 "$bin" "image/binaries/$2/otel-cli"
           }
@@ -139,7 +151,7 @@ jobs:
           docker run --rm otel-cli-smoke version
 
       - name: Login to ghcr
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -162,7 +174,7 @@ jobs:
             type=semver,pattern=v{{version}}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,enable=${{ github.ref_type != 'tag' }}
+            type=sha,enable=${{ !(github.event_name == 'push' && github.ref_type == 'tag') }}
 
       # Tag runs push BY DIGEST here and apply the version tags in the last step
       # below, after signing. Order matters for the package page: GitHub's
@@ -178,16 +190,16 @@ jobs:
           file: release/Dockerfile
           platforms: linux/amd64,linux/arm64
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=ghcr.io/tobert/otel-cli,name-canonical=true,push-by-digest=true,push=${{ github.ref_type == 'tag' }}
+          outputs: type=image,name=ghcr.io/tobert/otel-cli,name-canonical=true,push-by-digest=true,push=${{ github.event_name == 'push' && github.ref_type == 'tag' }}
 
       # Same keyless machinery as the checksums signature, aimed at the manifest
       # digest — the signature covers every tag later pointed at it.
       - name: Sign image (cosign keyless)
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         run: cosign sign --yes ghcr.io/tobert/otel-cli@${{ steps.build.outputs.digest }}
 
       - name: Attest image provenance
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ghcr.io/tobert/otel-cli
@@ -199,11 +211,13 @@ jobs:
       # rebuild, no layer movement — and because this is the package's newest
       # publish, the install box shows a real, pullable version.
       - name: Publish version tags (last, so "Latest" is pullable)
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           args=()
-          while IFS= read -r t; do [ -n "$t" ] && args+=(-t "$t"); done <<< "$TAGS"
+          # sort -u: on a prerelease every semver pattern degrades to the same
+          # full version, so metadata-action emits duplicate tags.
+          while IFS= read -r t; do [ -n "$t" ] && args+=(-t "$t"); done <<< "$(sort -u <<< "$TAGS")"
           docker buildx imagetools create "${args[@]}" "ghcr.io/tobert/otel-cli@$DIGEST"

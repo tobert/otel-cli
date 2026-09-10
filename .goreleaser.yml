@@ -74,7 +74,9 @@ checksum:
   name_template: "checksums.txt"
 
 # One SBOM for the whole release, cataloged from go.mod/go.sum (every target
-# shares the same module graph), rather than one document per archive. syft is
+# shares the same module graph), rather than one document per archive.
+# `artifacts: any` + one `documents` entry is the documented shape for that
+# (verified on v2.18: exactly one SBOM, listed in checksums.txt). syft is
 # installed by the workflow; local snapshot runs pass --skip=sbom.
 sboms:
   - id: source

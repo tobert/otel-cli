@@ -32,7 +32,7 @@ We publish a number of package formats for otel-cli, including tar.gz, zip (wind
 apk (Alpine), rpm (Red Hat variants), deb (Debian variants), and a brew tap. These
 can be found on the repo's [Releases](https://github.com/tobert/otel-cli/releases) page.
 
-On most platforms the easiest way is a go get:
+On most platforms the easiest way is `go install`:
 
 ```shell
 go install github.com/tobert/otel-cli@latest
@@ -209,8 +209,9 @@ otel-cli span --attrs 'item1=value1,"item2=value2,value3",item3=value4'
 
 ### Docker TLS Certificates
 
-As of release 0.4.2, otel-cli containers are built off the latest Alpine base
-image which contains the base CA certificate bundles. In order to override
+Since release 0.4.2, otel-cli containers are built off an Alpine base image
+(pinned by digest in [release/Dockerfile](release/Dockerfile) and bumped by
+Dependabot) which contains the base CA certificate bundles. In order to override
 these for e.g. a self-signed certificate, the best bet is to volume mount your
 own /etc/ssl into the container, and it should get picked up by otel-cli and Go's
 TLS libraries.
