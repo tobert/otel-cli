@@ -18,8 +18,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: test
+  # The job id is `build` because main's ruleset requires a status check with
+  # that context name; renaming it silently blocks every PR.
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
