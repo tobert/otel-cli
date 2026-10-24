@@ -583,14 +583,8 @@ var suites = []FixtureSuite{
 				IsLongTest:           true,
 			},
 			Expect: Results{
-				Config: otelcli.DefaultConfig(),
-			},
-			CheckFuncs: []CheckFunc{
-				func(t *testing.T, f Fixture, r Results) {
-					if r.ExitCode != 42 {
-						t.Errorf("expected exit code 42 from child process, got %d", r.ExitCode)
-					}
-				},
+				Config:   otelcli.DefaultConfig(),
+				ExitCode: 42,
 			},
 		},
 	},
@@ -1155,6 +1149,7 @@ var suites = []FixtureSuite{
 				CliOutputRe: regexp.MustCompile(`^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} `),
 				CliOutput:   "invalid protocol setting \"xxx\"\n",
 				Config:      otelcli.DefaultConfig().WithEndpoint("{{endpoint}}"),
+				ExitCode:    1, // --fail
 				Diagnostics: otelcli.Diagnostics{
 					IsRecording:       false,
 					NumArgs:           7,
@@ -1403,7 +1398,7 @@ var suites = []FixtureSuite{
 			Expect: Results{
 				SpanCount: 1,
 				Config:    otelcli.DefaultConfig().WithEndpoint("{{endpoint}}"),
-				ExitCode:  2,
+				ExitCode:  130, // 128 + SIGINT, as shells report it
 				SpanData: map[string]string{
 					"status_code":        "2",
 					"status_description": "exec command failed: signal: interrupt",
@@ -1423,7 +1418,7 @@ var suites = []FixtureSuite{
 			Expect: Results{
 				SpanCount: 1,
 				Config:    otelcli.DefaultConfig().WithEndpoint("{{endpoint}}"),
-				ExitCode:  2,
+				ExitCode:  137, // 128 + SIGKILL
 				SpanData: map[string]string{
 					"status_code":        "2",
 					"status_description": "exec command failed: signal: killed",
@@ -1444,7 +1439,7 @@ var suites = []FixtureSuite{
 			Expect: Results{
 				SpanCount: 1,
 				Config:    otelcli.DefaultConfig().WithEndpoint("{{endpoint}}"),
-				ExitCode:  0,
+				ExitCode:  137, // --command-timeout kills sleep at 100ms
 			},
 		},
 	},

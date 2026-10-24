@@ -207,6 +207,11 @@ func checkProcess(t *testing.T, fixture Fixture, results Results) bool {
 		t.Errorf("[%s] command failed is %t but expected %t", fixture.Name, results.CommandFailed, fixture.Expect.CommandFailed)
 		return false
 	}
+	// a killed process has no exit code of its own, so only compare clean exits
+	if !results.TimedOut && !results.CommandFailed && results.ExitCode != fixture.Expect.ExitCode {
+		t.Errorf("[%s] exit code is %d but expected %d", fixture.Name, results.ExitCode, fixture.Expect.ExitCode)
+		return false
+	}
 	return true
 }
 
