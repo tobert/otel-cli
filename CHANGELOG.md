@@ -23,6 +23,8 @@ Begin agent-assisted development era.
 - Container image tags gain bare semver (`0.6.0`, `0.6`) alongside `v0.6.0` and
   `latest`; base image is a digest-pinned Alpine 3.24
 - Dependabot keeps action pins, the base image digest, and Go modules current
+- Dependency refresh; image base Alpine 3.24.3
+- Builds use the latest stable Go and fail on govulncheck findings
 - Establish agent-assisted development practices
 - Emphasize functional testing and self-contained design
 - Documentation of project philosophy and structure for agents
