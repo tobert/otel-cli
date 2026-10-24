@@ -1,418 +1,238 @@
-# AGENTS.md: LLM Agent Development Protocol
+# otel-cli agent guide
 
-This file provides guidance to agents working with code in this repository.
+otel-cli sends OpenTelemetry spans from shell scripts and other places where a program
+call is the best option. It is one Go binary that needs no configuration to run.
 
-## Project Overview
+Scripts depend on this behavior. Do not change it without a maintainer decision:
 
-**otel-cli** is a command-line tool for sending OpenTelemetry traces from shell scripts and other contexts where executing a program is the best available option. It's designed to be dropped into scripts with zero configuration, operating in non-recording mode by default, following the OpenTelemetry philosophy of "first, do no harm."
+- With no endpoint, otel-cli is in non-recording mode. It exports nothing and exits 0.
+- An export error does not change the exit code. otel-cli exits 0 and prints nothing.
+- `--fail` (`OTEL_CLI_FAIL`) makes an export error exit 1.
+- `--verbose` (`OTEL_CLI_VERBOSE`) prints errors to stderr.
+- `otel-cli exec` exits with the exit code of the child, also when the export fails.
 
-## Technology
+## Writing style
 
-- **Language**: Go 1.21+ (uses toolchain go1.22.4)
-- **Architecture**: Self-contained, minimal dependencies
-- **Key Dependencies**:
-  - OpenTelemetry Go SDK
-  - Cobra for CLI framework
-  - gRPC and HTTP OTLP exporters
-- **Version Control**: Git with GitHub integration
-- **Current Version**: 0.5.0 (as of this writing)
+This style applies to documentation, `--help` text, error messages, code comments,
+commit messages, PR descriptions and CHANGELOG.md.
 
-## Development Philosophy
+The style is based on ASD-STE100 Simplified Technical English (STE). We use these
+rules, not the full STE dictionary:
 
-This project is **self-contained and focused**:
-- Minimal external dependencies - prefer standard library
-- Shell script integration is a first-class use case
-- Non-recording mode by default ensures scripts can adopt otel-cli without risk
-- Functional testing validates real-world usage patterns
-- Code should be readable and maintainable above all else
+- Write one topic in each sentence. Keep an instruction to 20 words or fewer and a
+  description to 25 words or fewer.
+- Use the imperative for instructions: "Run `go build` before `go test`."
+- Use the active voice and name the actor: "otel-cli exits 1", not "1 is returned".
+- Use common words. Do not use idioms, figures of speech or jokes. Some readers have
+  English as a second language, and some readers have only part of the context.
+- Use one term for one concept. Do not change words for variety. The Terms table is
+  the source.
+- Give specific values: the flag, the environment variable, the default, the exit code.
+- Put the most important information first. The reader can lose the end of the text.
+- Show the correct example before the explanation. If you must show an incorrect
+  example, put the correct one first and mark the error.
+- Use American spelling.
+- Do not add decoration: no emoji headings, no marketing words.
 
-## 🧪 Testing Philosophy
+> Before: The span might not get sent if something goes wrong with the connection.
+>
+> After: If the export fails, otel-cli sends nothing and exits 0. Add `--fail` to exit 1.
 
-**Functional testing is primary.** Unit tests are encouraged but functional tests in `main_test.go` are where the rubber meets the road.
+### Each kind of text
 
-### The Test Harness
+**Documentation and help text.** This is README.md, TESTING.md, `demos/`, and the Cobra
+`Short`, `Long` and flag descriptions. Users and agents read help text. Apply all of
+the rules.
 
-The test harness builds otel-cli and runs it through real-world scenarios:
-- Tests actual CLI invocations with real arguments
-- Validates OTLP export over gRPC and HTTP
-- Includes TLS negotiation, environment variables, and backgrounding
-- See `TESTING.md` for comprehensive details
+**Error messages.** Give the value, the rule and the fix. Do not show internal names
+that the user cannot act on. Wrap Go errors with `fmt.Errorf("context: %w", err)`.
 
-### Testing Best Practices
+**Code comments.** Write why, not what. Use one line when one line is enough. Give a
+reason one time in each file, not on each repeated step. Put the narrative in the
+commit message.
 
-1. **Add functional tests** for new CLI features or flags
-2. **Write unit tests** for complex logic in packages
-3. **Test the glue code** - that's where bugs hide
-4. **Copy existing patterns** from `data_for_test.go` when adding tests
-5. **Use `--fail --verbose`** in test fixtures for debugging
+**Commit messages.** Use the template in "Version control". Write 1 to 3 sentences in
+each field. Quote the user when their request is the reason for the change. Give the
+evidence: commands, versions, CI run IDs.
 
-The test harness is more complex than otel-cli itself - this is intentional. We trust Cobra, OpenTelemetry Go SDK, and the standard library. We test the integration.
+**PR descriptions.** The PR description becomes the squash commit message. Write it as
+a commit message. Start with what changed and why. List the verification commands. Do
+not repeat content in different sections.
 
-## 🧠 Git: Your Persistent Memory System
+**CHANGELOG.md.** Write one line for each bullet. Name the change, not the
+investigation.
 
-**Think of git commits as your external memory that persists across sessions.** Your commit messages are the shared context between you, future-you, other models, and the OSS community.
+### Terms
 
-### Why Rich Commit Messages Matter
+Terms from OpenTelemetry and W3C Trace Context have their specification meaning. This
+table has only the terms that otel-cli adds. Add a term when two meanings collide in
+real text, not before.
 
-- **Memory Augmentation**: Your reasoning persists beyond context windows
-- **Perfect Handoffs**: Next model/session picks up exactly where you left off
-- **Community Intelligence**: Every contributor's insights become permanent project knowledge
-- **Pattern from Training**: This is how high-performing teams in your data operate
+| Term | Meaning |
+|---|---|
+| non-recording mode | No endpoint is set. otel-cli runs normally but exports nothing. |
+| soft fail | An error path that exits 0, or 1 with `--fail`. In code: `Config.SoftFail`. |
+| fixture | One test case in `data_for_test.go`. |
+| functional test | A test that runs the built `./otel-cli` against a test OTLP server. |
 
-### Your 30-Second Workflow
-
-```bash
-# 1. START: Load your context (what was I doing?)
-git log --oneline -n 10
-git show HEAD
-
-# 2. WORK: Track your progress (commit often in your branch)
-git add <files>
-git commit -m "type: what you're building"
-
-# 3. PERSIST: Save your state
-git push origin <branch>
-
-# 4. MERGE: Squash commits when merging to main
-# PRs are squashed on merge to keep main history clean
-```
-
-### The Universal Commit Message Template
-
-```
-<type>: <what> - <why in 5 words>
-
-Why: [Original problem/request]
-Approach: [Key decision you made]
-Learned: [What surprised you]
-Next: [Specific next action]
-
-🤖 YourModel <your@attribution>
-```
-
-**Types**: `feat`, `fix`, `refactor`, `test`, `docs`, `debug`, `research`
-
-### Real Example That Works
-
-```bash
-git commit -m "fix: race condition in buffer - preventing data loss
-
-Why: Users reported missing spans under load
-Approach: Added mutex to protect concurrent access
-Learned: Go's sync.Map insufficient for our write patterns
-Next: Add benchmark to verify no performance regression
-
-🤖 Claude <claude@anthropic.com>"
-```
-
-### Model Attributions
-
-- Claude: `🤖 Claude <claude@anthropic.com>`
-- Gemini: `💎 Gemini <gemini@google.com>`
-- GPT-4: `🧠 GPT-4 <gpt4@openai.com>`
-- Kimi: `🔮 Kimi <kimi@moonshot.ai>`
-- Llama: `🦙 Llama <llama@meta.com>`
-
-### The Handoff Protocol
-
-When switching models or sessions:
-```bash
-git commit -m "[your work]
-
-Status: [complete|blocked|handoff]
-Context: [5 key facts next model needs]
-Next: [specific task to continue]"
-```
-
-### Success Metrics
-
-You're succeeding when:
-- ✅ Every commit has Why/Approach/Next
-- ✅ You update commit messages to reflect learning
-- ✅ Other models/developers can continue without asking questions
-- ✅ `git log -p` shows your reasoning evolution
-
-### Quick Reference
-
-| Command | Purpose | When to Use |
-|---------|---------|------------|
-| `git add <files>` | Stage changes | Before committing |
-| `git commit -m "..."` | Commit with message | Completing discrete work |
-| `git log -n 10` | See recent work | Starting sessions |
-| `git show HEAD` | View current state | Understanding context |
-| `git log -p` | See change history | Debugging decisions |
-| `git push origin <branch>` | Push to GitHub | Work ready to share |
-| `git status` | Check working tree | Understanding current state |
-
-### Your Style Is Welcome
-
-- **Claude**: Write narratives that explain the journey
-- **Gemini**: Use structured sections with data
-- **GPT-4**: Focus on tasks and outcomes
-- **Kimi**: Document patterns and research
-- **Llama**: Keep it pragmatic and concise
-
-**The format is flexible, the information is essential.**
-
-### Remember
-
-Git commits are messages to your future self and the community. Write what you'd need at 3am to understand what you were thinking. Your future self (and other models) will thank you.
-
-## 📊 GitHub Issues for Project Tracking
-
-**This project has OSS history and active community engagement.** Use GitHub issues liberally for:
-
-- **Feature planning** - Open issues to discuss new features before implementing
-- **Bug tracking** - Document bugs with reproduction steps
-- **Project status** - Keep ongoing work visible in issues
-- **Community engagement** - Issues are how users interact with the project
-- **Handoffs** - Reference issues in commits to maintain context
-
-### Issue Best Practices
-
-1. **Open issues early** - Don't wait until implementation is complete
-2. **Reference commits** - Link commits to issues with "refs #123" or "fixes #123"
-3. **Update issues** - Comment on progress, blockers, and learnings
-4. **Label appropriately** - Use labels to categorize and prioritize
-5. **Close with context** - Explain what was done and why when closing
-
-## 🏗️ Project Structure
+## Project structure
 
 ```
 otel-cli/
-├── main.go                 # Entry point, version info
-├── main_test.go            # Functional test harness
-├── data_for_test.go        # Test fixture definitions
-├── tls_for_test.go         # Ephemeral CA for TLS tests
-├── otelcli/                # CLI framework and commands
-├── otlpclient/             # OTLP gRPC/HTTP client
-├── otlpserver/             # OTLP server (for 'server' command)
-├── w3c/                    # W3C trace context handling
-├── demos/                  # Example shell scripts
-├── configs/                # Example configurations
-├── TESTING.md              # Testing documentation
-└── CHANGELOG.md            # Version history
+├── main.go             # Entry point and version information
+├── main_test.go        # Functional test harness
+├── data_for_test.go    # Functional test fixtures
+├── tls_for_test.go     # Temporary CA for the TLS tests
+├── otelcli/            # Cobra commands and configuration
+├── otlpclient/         # OTLP gRPC and HTTP client
+├── otlpserver/         # OTLP server for `otel-cli server` and the tests
+├── w3c/                # W3C trace context
+├── demos/              # Example shell scripts
+├── configs/            # Example configurations
+├── release/            # Release image Dockerfile
+├── .github/workflows/  # CI and release workflows
+├── TESTING.md          # Test harness documentation
+└── CHANGELOG.md        # Version history
 ```
 
-## 🔧 Go Development Commands
+## Gates
+
+CI runs these on every PR. Run them before you push.
 
 ```bash
-# Build the project
-go build
-
-# Run functional tests (requires built binary)
-go build && go test
-
-# Run unit tests
-go test ./...
-
-# Run unit tests with verbose output
-go test -v ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Run with race detector
-go build -race
-go test -race ./...
-
-# Format code (always use gofmt)
-go fmt ./...
-
-# Vet code
+go build && go test ./...
 go vet ./...
-
-# Update dependencies
-go mod tidy
-
-# Verify dependencies
-go mod verify
+gofmt -l .                                  # prints nothing when clean
+go mod tidy && git diff --exit-code go.mod go.sum
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
-### Running otel-cli Locally
+CI also builds a GoReleaser snapshot.
 
-```bash
-# Build it
-go build
+### Hazards
 
-# Run the server TUI for local testing
-./otel-cli server tui
+- The functional tests run `./otel-cli`. Run `go build` first, or the tests use an old
+  binary.
+- The harness does not compare the `ExitCode` of a fixture. Check exit codes in a
+  `CheckFuncs` entry.
+- `Config.SoftFail` calls `os.Exit`. Code after a `SoftFail` call does not run.
+- Parse integer values from users in base 10: `strconv.ParseInt(v, 10, 64)`. Base 0
+  reads `0x10` as 16 and `010` as 8.
+- CI and releases build with the latest stable Go. The `go` line in go.mod is only the
+  minimum version.
+- The `build` job in `ci.yml` is a required status check. If you rename it, every PR
+  is blocked.
 
-# In another terminal, send a span
-export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
-./otel-cli span -n "test" -s "my-service"
+## Testing
+
+Functional tests are the primary tests. TESTING.md documents the harness.
+
+- Add a functional test for each new CLI feature or flag. Copy a fixture from
+  `data_for_test.go`.
+- Add unit tests for complex logic in packages. Use table-driven tests and `t.Run`.
+- Test the error paths, not only the success paths.
+- Add `--fail --verbose` to a fixture to see its errors.
+
+We trust Cobra, the OpenTelemetry Go SDK and the standard library. We test the
+integration between them, because most bugs are there.
+
+## Go code
+
+- Write correct, readable code first. Optimize only after a measurement.
+- Prefer the standard library. Add a dependency only when it removes real work.
+- Use full, descriptive names. Do not abbreviate.
+- Give each package a package doc comment. Give each exported name a doc comment.
+- Handle every error. Return errors. Panic only when the program cannot continue.
+- Pass `context.Context` as the first parameter. Stop work when the context is done.
+- Run `gofmt`.
+
+### Shell scripts are the main users
+
+- Make each feature easy to use from bash.
+- Give each new configuration flag an environment variable, as `otelcli/config.go` does.
+- Exit codes are part of the interface. Scripts check them.
+- Write data to stdout and diagnostics to stderr.
+
+## Version control
+
+- `main` is protected. Each change lands through a PR, and PRs are squash-merged.
+- Agents can open PRs. A human decides to merge.
+- Ask a maintainer before you open an issue. Refer to issues with `refs #N` or
+  `fixes #N`.
+- Commit often in your branch. The commit history is the memory for the next session,
+  agent or developer.
+
+Start a session with `git log --oneline -n 20`, `gh issue list`, `git status` and
+`go build && go test ./...`.
+
+### Commit message template
+
+```
+<type>: <what> - <why, in a few words>
+
+Why: <the problem or the request>
+Approach: <the decision and the reason for it>
+Learned: <what was unexpected>
+Next: <the next specific action>
+
+🤖 <Model> <attribution address>
 ```
 
-## 💎 Go Code Style & Quality
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `build`, `research`.
 
-### Correctness & Clarity First
+```
+fix(attrs): parse integer attributes in base 10 - stop octal coercion
 
-- Prioritize readable, correct code over premature optimization
-- Use strong, idiomatic Go types
-- Leverage Go 1.21+ features appropriately
-- No shortcuts or workarounds - refactor messy code when encountered
-
-### Naming & Structure
-
-- Use full, descriptive names - no unnecessary abbreviations
-- Package names: short, lowercase, single word
-- Exported names: clear and self-documenting
-- Add new functionality to existing files unless it represents a distinct logical component
-
-### Comments & Documentation
-
-- **No organizational comments** - code should be self-documenting
-- **"Why" comments only** - explain non-obvious implementation choices
-- Package-level documentation for every package
-- Exported functions/types must have doc comments
-
-### Error Handling
-
-- Always handle errors explicitly - never ignore them
-- Use `fmt.Errorf` with `%w` for error wrapping to preserve context
-- Return errors, don't panic (except for truly unrecoverable situations)
-- Provide useful error messages with context
-
-### Concurrency & Context
-
-- Pass `context.Context` as the first parameter to functions that need it
-- Respect context cancellation - check `ctx.Done()` in long-running operations
-- Use channels and goroutines idiomatically
-- Avoid shared mutable state - use channels or mutexes appropriately
-
-### Testing
-
-- **Functional tests first** for CLI features and integration
-- Unit tests for complex logic in packages
-- Table-driven tests for multiple cases
-- Use subtests with `t.Run()` for clarity
-- Test error paths, not just happy paths
-
-### Shell Script Integration
-
-otel-cli is designed for shell scripts. When adding features:
-
-- **Consider the shell use case** - is this ergonomic from bash?
-- **Test with real shell scripts** - demos/ directory provides examples
-- **Environment variables matter** - shell scripts rely on them heavily
-- **Exit codes matter** - shell scripts check them
-- **Stdout vs stderr** - be intentional about what goes where
-
-## 🐙 GitHub Integration
-
-**GitHub CLI (`gh`):**
-Use `gh` for GitHub operations without leaving the terminal:
-
-```bash
-gh pr create                 # Create PR
-gh pr status                 # Check PR status
-gh pr checks                 # View CI results
-gh issue list                # Check issues
-gh issue view <number>       # Read issue details
-gh issue create              # Create new issue
+Why: `--attrs n=010` exported 8, not 10 (#373).
+Approach: strconv.ParseInt(v, 10, 64) instead of base 0.
+Learned: base 0 also accepts the 0x, 0o and 0b prefixes.
+Next: none.
 ```
 
-**Squash Commits on Merge:**
+When you stop before the work is complete, add these fields:
 
-This project maintains a clean, linear history through squash commits:
+```
+Status: complete | blocked | handoff
+Context: <the facts that the next agent needs>
+Next: <the task to continue>
+```
 
-- **Work in branches**: Make as many commits as needed during development
-- **Rich commit messages**: Document your journey in branch commits
-- **Squash on merge**: PRs are squashed into a single commit on main
-- **Final commit message**: Should summarize the entire PR, not just the last commit
+### Model attribution
 
-When creating a PR, write a good description - it becomes the squash commit message. Include:
-- What changed and why
-- Key decisions made
-- Any gotchas or learnings
-- Tests added or modified
+Credit each model that wrote or reviewed the change, with one line for each model:
 
-## 📦 Versioning & Releases
+- Claude: `🤖 Claude <claude@anthropic.com>`
+- Gemini: `💎 Gemini <gemini@google.com>`
+- GPT: `🧠 GPT <gpt@openai.com>`
+- Kimi: `🔮 Kimi <kimi@moonshot.ai>`
+- Llama: `🦙 Llama <llama@meta.com>`
 
-**Semantic versioning:** MAJOR.MINOR.PATCH (e.g., 0.5.0)
+## Releases
 
-- **MAJOR**: Breaking changes (we're not at 1.0 yet)
-- **MINOR**: New features, significant changes
-- **PATCH**: Bug fixes, small improvements
+otel-cli uses semantic versioning. Before 1.0, a minor release can break compatibility.
 
-**Releases are cut by GitHub Actions on a tag push:**
+A `v*` tag push runs `.github/workflows/release.yml`. GoReleaser (`.goreleaser.yml`)
+makes the binaries, packages, SBOM, signatures, GitHub release and Homebrew formula.
+The workflow then builds, signs, attests and tags the ghcr.io image.
 
-- Pushing a `v*` tag runs `.github/workflows/release.yml`, which drives goreleaser
-  (`.goreleaser.yml`) for binaries, packages, SBOM, signing, the GitHub release and the
-  Homebrew formula, then builds, signs, attests and tags the ghcr image
-- A `-rc.N` tag is a GitHub prerelease: it skips the Homebrew tap and never becomes `latest`
-- `workflow_dispatch` runs the same workflow as a snapshot that publishes nothing
-- The full procedure and the one required secret are in README.md under "Releases"
+- A `-rc.N` tag makes a GitHub prerelease. It does not update the Homebrew tap or
+  `latest`.
+- A `workflow_dispatch` run is a snapshot. It publishes nothing.
 
-**When bumping versions:**
+To release:
 
-1. Update CHANGELOG.md with changes and merge that to main first
-2. Tag the release off main: `git tag v0.X.Y && git push origin v0.X.Y`
-3. Watch the `release` workflow; nothing else is manual
+1. Update CHANGELOG.md and merge it to main.
+2. Tag main: `git tag v0.X.Y && git push origin v0.X.Y`.
+3. Watch the `release` workflow.
 
-## 🎯 When Working on otel-cli
-
-### Starting a Session
-
-1. `git log --oneline -n 20` - What's been happening?
-2. `gh issue list` - What's being tracked?
-3. `git status` - What's the current state?
-4. `go build && go test` - Does everything work?
-
-### Making Changes
-
-1. **Open/reference an issue** - Keep work visible
-2. **Write tests first** - Especially functional tests
-3. **Make it work** - Get it functionally correct
-4. **Make it right** - Clean up, refactor, document
-5. **Commit with context** - Rich commit messages
-
-### Completing Work
-
-1. **All tests pass** - `go build && go test && go test ./...`
-2. **Code formatted** - `go fmt ./...`
-3. **Commit with attribution** - Use the template above (multiple commits OK in branch)
-4. **Push and create PR** - Reference the issue with good description
-5. **Update issue** - Mark as complete or pending review
-6. **Squash on merge** - PRs are squashed to keep main history clean
-
-## 🤝 Cross-Model Collaboration
-
-Git's power is in context preservation across sessions, agents, and developers.
-
-**Picking up someone else's work:**
-
-1. Find their commit: `git log --oneline -n 20`
-2. Read their message: `git show <commit-sha>`
-3. See the changes: `git show <commit-sha> -p`
-4. Continue their work with your own commits
-
-**Avoiding duplicate work:**
-
-- Always check `git log -n 20` before starting something new
-- Search commit messages: `git log --grep="keyword"`
-- Check GitHub issues: `gh issue list`
-
-## Remember
-
-**Git commits are permanent project knowledge.** They are:
-
-- Context for future sessions and developers
-- Documentation of architectural decisions
-- Reasoning traces that survive indefinitely
-- Messages to your future self and the community
-
-**Your commit message quality directly impacts the next agent's and next developer's ability to succeed.** Write for them.
+README.md, "Releases" has the full procedure and the required secret.
 
 ## Attribution
 
-- Built by A. Tobey while at Equinix (primarily on the Metal team)
-- Forked and maintained by A. Tobey (@tobert) since 2025
-- Agent-assisted development begins with v0.6.0
-- All commits should use appropriate agent attribution (see section above)
+- A. Tobey wrote otel-cli at Equinix, mostly on the Metal team.
+- A. Tobey (@tobert) forked it and maintains it since 2025.
+- Agent-assisted development starts with v0.6.0.
 
 ## License
 
-Apache License 2.0 - Copyright (c) 2025 A. Tobey
-
-See LICENSE file for full details.
+Apache License 2.0. Copyright (c) 2025 A. Tobey. See LICENSE.

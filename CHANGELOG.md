@@ -4,7 +4,7 @@ Begin agent-assisted development era.
 
 ### Added
 
-- AGENTS.md: LLM agent development protocol and guidance
+- AGENTS.md: agent development protocol and guidance
 - Agent memory and collaboration patterns adapted from otlp-mcp
 - GitHub issue tracking integration for agent workflows
 - Squash commit guidance to maintain clean git history
