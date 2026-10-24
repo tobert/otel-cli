@@ -10,6 +10,7 @@ Scripts depend on this behavior. Do not change it without a maintainer decision:
 - `--fail` (`OTEL_CLI_FAIL`) makes an export error exit 1.
 - `--verbose` (`OTEL_CLI_VERBOSE`) prints errors to stderr.
 - `otel-cli exec` exits with the exit code of the child, also when the export fails.
+  A nonzero child exit code has priority over `--fail`.
 
 ## Writing style
 
@@ -55,8 +56,8 @@ commit message.
 each field. Quote the user when their request is the reason for the change. Give the
 evidence: commands, versions, CI run IDs.
 
-**PR descriptions.** The PR description becomes the squash commit message. Write it as
-a commit message. Start with what changed and why. List the verification commands. Do
+**PR descriptions.** The PR description becomes the squash commit message. Start with
+what changed and why. List the verification commands. Do
 not repeat content in different sections.
 
 **CHANGELOG.md.** Write one line for each bullet. Name the change, not the
@@ -65,13 +66,13 @@ investigation.
 ### Terms
 
 Terms from OpenTelemetry and W3C Trace Context have their specification meaning. This
-table has only the terms that otel-cli adds. Add a term when two meanings collide in
-real text, not before.
+table has only the terms that otel-cli adds. Add a term when real text uses one word
+for two concepts. Do not add terms in advance.
 
 | Term | Meaning |
 |---|---|
 | non-recording mode | No endpoint is set. otel-cli runs normally but exports nothing. |
-| soft fail | An error path that exits 0, or 1 with `--fail`. In code: `Config.SoftFail`. |
+| soft fail | An error path. otel-cli exits 0, or 1 with `--fail`. A nonzero `exec` child exit code has priority. In code: `Config.SoftFail`. |
 | fixture | One test case in `data_for_test.go`. |
 | functional test | A test that runs the built `./otel-cli` against a test OTLP server. |
 
@@ -79,7 +80,7 @@ real text, not before.
 
 ```
 otel-cli/
-├── main.go             # Entry point and version information
+├── main.go             # Entry point and version variables
 ├── main_test.go        # Functional test harness
 ├── data_for_test.go    # Functional test fixtures
 ├── tls_for_test.go     # Temporary CA for the TLS tests
@@ -90,6 +91,8 @@ otel-cli/
 ├── demos/              # Example shell scripts
 ├── configs/            # Example configurations
 ├── release/            # Release image Dockerfile
+├── Dockerfile          # Local development image
+├── .goreleaser.yml     # Release build configuration
 ├── .github/workflows/  # CI and release workflows
 ├── TESTING.md          # Test harness documentation
 └── CHANGELOG.md        # Version history
@@ -113,9 +116,13 @@ CI also builds a GoReleaser snapshot.
 
 - The functional tests run `./otel-cli`. Run `go build` first, or the tests use an old
   binary.
-- The harness does not compare the `ExitCode` of a fixture. Check exit codes in a
-  `CheckFuncs` entry.
+- The harness ignores `Expect.ExitCode`. Fixtures set it, but it tests nothing. Check
+  exit codes in a `CheckFuncs` entry.
+- A fixture must not set `PATH`. The harness stops the run.
+- `go test -short ./...` skips the fixtures that set `IsLongTest`.
 - `Config.SoftFail` calls `os.Exit`. Code after a `SoftFail` call does not run.
+- `exec` keeps the child exit code in `Diag.ExecExitCode`. Set it before any
+  `SoftFail` call, or the exit code is lost.
 - Parse integer values from users in base 10: `strconv.ParseInt(v, 10, 64)`. Base 0
   reads `0x10` as 16 and `010` as 8.
 - CI and releases build with the latest stable Go. The `go` line in go.mod is only the
@@ -132,6 +139,8 @@ Functional tests are the primary tests. TESTING.md documents the harness.
 - Add unit tests for complex logic in packages. Use table-driven tests and `t.Run`.
 - Test the error paths, not only the success paths.
 - Add `--fail --verbose` to a fixture to see its errors.
+- Run `otel-cli status` to see the configuration, environment and diagnostics. The
+  harness reads its output.
 
 We trust Cobra, the OpenTelemetry Go SDK and the standard library. We test the
 integration between them, because most bugs are there.
@@ -149,7 +158,8 @@ integration between them, because most bugs are there.
 ### Shell scripts are the main users
 
 - Make each feature easy to use from bash.
-- Give each new configuration flag an environment variable, as `otelcli/config.go` does.
+- Give a new flag an environment variable when scripts set it for many commands. Flags
+  for one invocation, such as `--start`, do not need one.
 - Exit codes are part of the interface. Scripts check them.
 - Write data to stdout and diagnostics to stderr.
 
@@ -159,11 +169,11 @@ integration between them, because most bugs are there.
 - Agents can open PRs. A human decides to merge.
 - Ask a maintainer before you open an issue. Refer to issues with `refs #N` or
   `fixes #N`.
-- Commit often in your branch. The commit history is the memory for the next session,
-  agent or developer.
+- Commit often in your branch. The next session reads the commit history to learn what
+  changed and why.
 
-Start a session with `git log --oneline -n 20`, `gh issue list`, `git status` and
-`go build && go test ./...`.
+Start each session with `git status`, `git log --oneline -n 20` and `gh issue list`.
+Then run `go build && go test ./...`.
 
 ### Commit message template
 
@@ -194,7 +204,6 @@ When you stop before the work is complete, add these fields:
 ```
 Status: complete | blocked | handoff
 Context: <the facts that the next agent needs>
-Next: <the task to continue>
 ```
 
 ### Model attribution
@@ -229,4 +238,5 @@ README.md, "Releases" has the full procedure and the required secret.
 
 ## License
 
-Apache License 2.0. Copyright (c) 2025 A. Tobey. See LICENSE.
+Apache License 2.0. Copyright 2020 Packet Host, Inc. / Equinix Metal and 2025 A. Tobey.
+See LICENSE.
