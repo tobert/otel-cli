@@ -116,8 +116,6 @@ CI also builds a GoReleaser snapshot.
 
 - The functional tests run `./otel-cli`. Run `go build` first, or the tests use an old
   binary.
-- The harness ignores `Expect.ExitCode`. Fixtures set it, but it tests nothing. Check
-  exit codes in a `CheckFuncs` entry.
 - A fixture must not set `PATH`. The harness stops the run.
 - `go test -short ./...` skips the fixtures that set `IsLongTest`.
 - `Config.SoftFail` calls `os.Exit`. Code after a `SoftFail` call does not run.
