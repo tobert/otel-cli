@@ -49,16 +49,12 @@ jobs:
           # its git checks; a shallow clone has neither.
           fetch-depth: 0
 
-      # go.mod's `go` line is the floor for building, not the compiler to ship:
-      # setup-go installs exactly that version, so `go 1.26.0` there would
-      # build with 1.26.0 and miss every stdlib security patch since.
+      # Not go-version-file: that pins go.mod's exact patch release.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
           check-latest: true
 
-      # Covers the stdlib of the compiler above and every module, direct or
-      # indirect; Dependabot's grouped updates only bump direct requirements.
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
