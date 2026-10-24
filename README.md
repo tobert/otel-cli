@@ -331,8 +331,7 @@ We welcome contributions! This project uses agent-assisted development starting 
 
 **For agents working on this codebase:**
 - See [AGENTS.md](AGENTS.md) for comprehensive agent development guidance
-- Claude Code, Codex and most agent tools read AGENTS.md natively; Gemini CLI
-  needs `"context": {"fileName": "AGENTS.md"}` in its settings.json
+- Claude Code, Codex, agy and most other agent tools read AGENTS.md natively
 - Emphasize functional testing in `main_test.go`
 - Commit freely in branches, squash on merge to main
 
