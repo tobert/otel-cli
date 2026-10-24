@@ -9,7 +9,7 @@
 # (ca-certificates-bundle is in the base) and a shell for debugging inside the
 # container, as the README has documented since 0.4.2. Pinned by manifest-list
 # digest, same discipline as the workflow's action pins; Dependabot bumps it.
-FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # Links the ghcr package to the repo even for a manual build; the workflow's
 # metadata-action adds the full OCI label set on top.
