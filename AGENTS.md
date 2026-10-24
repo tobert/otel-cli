@@ -199,13 +199,7 @@ Next: <the task to continue>
 
 ### Model attribution
 
-Credit each model that wrote or reviewed the change, with one line for each model:
-
-- Claude: `🤖 Claude <claude@anthropic.com>`
-- Gemini: `💎 Gemini <gemini@google.com>`
-- GPT: `🧠 GPT <gpt@openai.com>`
-- Kimi: `🔮 Kimi <kimi@moonshot.ai>`
-- Llama: `🦙 Llama <llama@meta.com>`
+Credit each model that wrote or reviewed the change, with one line for each model.
 
 ## Releases
 
