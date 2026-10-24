@@ -26,7 +26,8 @@ Begin agent-assisted development era.
 - Dependabot keeps action pins, the base image digest, and Go modules current
 - Dependencies refreshed: OpenTelemetry Go 1.47, envcar 0.72, gRPC 1.84,
   golang.org/x/net 0.61 (fixes GO-2026-6603, -6610, -6611, -6612, -6617);
-  Go 1.27 builder image, Alpine 3.24 digest bump
+  Go 1.27 builder image; image base Alpine 3.24.3 (ca-certificates 20261020,
+  which drops three of the four eMudhra emSign roots)
 - CI and releases build with the latest stable Go rather than go.mod's floor,
   and both fail on any govulncheck finding (stdlib or module, direct or not)
 - Establish agent-assisted development practices
