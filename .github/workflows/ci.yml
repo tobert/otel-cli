@@ -25,9 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Not go-version-file: that pins go.mod's exact patch release.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: stable
+          check-latest: true
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
       # The release runs `go mod verify`, never `tidy` (a tidy at release time
       # would ship a tree that differs from the tag), so tidiness is enforced
@@ -67,13 +72,14 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: stable
+          check-latest: true
 
       # `goreleaser check` would be the cheap gate, but it exits non-zero on the
       # deliberate `brews` deprecation (see .goreleaser.yml). A snapshot renders
       # every artifact including the formula, which is the stronger check anyway.
       - name: GoReleaser (snapshot)
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
           version: "~> v2"
