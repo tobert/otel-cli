@@ -1,4 +1,4 @@
-# BOTS.md: LLM Agent Development Protocol
+# AGENTS.md: LLM Agent Development Protocol
 
 This file provides guidance to agents working with code in this repository.
 
