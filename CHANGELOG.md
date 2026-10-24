@@ -34,7 +34,7 @@ Begin agent-assisted development era.
 
 ### Fixed
 
-- `exec` exits 128 + signal when the child is killed by a signal, not 255
+- `exec` exits 128 + signal when the child is killed by a signal, not 255 (Unix)
 
 ## [0.5.0] - 2025-04-21
 

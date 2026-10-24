@@ -1157,7 +1157,6 @@ var suites = []FixtureSuite{
 					ParsedTimeoutMs:   1000,
 					Endpoint:          "*",
 					EndpointSource:    "*",
-					ExecExitCode:      1,
 				},
 				SpanCount: 0,
 			},
