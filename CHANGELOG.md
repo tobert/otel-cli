@@ -33,6 +33,11 @@ Begin agent-assisted development era.
 - README: improved Contributing section for both agents and humans
 - LICENSE: updated copyright to include Equinix Metal and 2025 A. Tobey
 
+### Fixed
+
+- `exec` exits 128 + signal when the child is killed by a signal, not 255 (Unix)
+- `exec` no longer panics on Ctrl-C during the span export
+
 ## [0.5.0] - 2025-04-21
 
 Fork otel-cli to @tobert's personal GitHub.

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"os/user"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -156,11 +157,18 @@ func doExec(cmd *cobra.Command, args []string) {
 	// capture the child's exit code before OTLP export so SoftFail can use it (#360)
 	if child.ProcessState != nil {
 		Diag.ExecExitCode = child.ProcessState.ExitCode()
+		// a child killed by a signal reports -1, which os.Exit turns into 255;
+		// exit 128 + signal instead, as shells do
+		if status, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok && status.Signaled() {
+			Diag.ExecExitCode = 128 + int(status.Signal())
+		}
 	} else {
 		Diag.ExecExitCode = 127
 	}
 
 	cancelCtxDeadline()
+	// stop delivery before close, or a ctrl-c during export panics on a closed channel
+	signal.Stop(signals)
 	close(signals)
 	<-signalsDone
 
