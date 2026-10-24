@@ -167,6 +167,8 @@ func doExec(cmd *cobra.Command, args []string) {
 	}
 
 	cancelCtxDeadline()
+	// stop delivery before close, or a ctrl-c during export panics on a closed channel
+	signal.Stop(signals)
 	close(signals)
 	<-signalsDone
 

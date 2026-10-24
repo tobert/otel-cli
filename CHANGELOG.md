@@ -35,6 +35,7 @@ Begin agent-assisted development era.
 ### Fixed
 
 - `exec` exits 128 + signal when the child is killed by a signal, not 255 (Unix)
+- `exec` no longer panics on Ctrl-C during the span export
 
 ## [0.5.0] - 2025-04-21
 

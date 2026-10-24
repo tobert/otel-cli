@@ -587,6 +587,25 @@ var suites = []FixtureSuite{
 				ExitCode: 42,
 			},
 		},
+		{
+			Name: "exec ctrl-c during export does not panic",
+			Config: FixtureConfig{
+				CliArgs: []string{"exec",
+					"--endpoint", "{{endpoint}}",
+					"--timeout", "1s",
+					"--", "/bin/true",
+				},
+				StopServerBeforeExec: true,
+				KillAfter:            time.Millisecond * 200, // child is done, export is retrying
+				KillSignal:           syscall.SIGINT,
+				TestTimeoutMs:        3000,
+				IsLongTest:           true,
+			},
+			Expect: Results{
+				Config:        otelcli.DefaultConfig(),
+				CommandFailed: true, // ended by the signal, not a panic (exit 2)
+			},
+		},
 	},
 	// otel-cli span with no OTLP config should do and print nothing
 	{
