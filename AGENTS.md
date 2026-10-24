@@ -16,8 +16,8 @@ Scripts depend on this behavior. Do not change it without a maintainer decision:
 This style applies to documentation, `--help` text, error messages, code comments,
 commit messages, PR descriptions and CHANGELOG.md.
 
-The style is based on ASD-STE100 Simplified Technical English (STE). We use these
-rules, not the full STE dictionary:
+The style is inspired by Simplified Technical English (STE). We use these rules, not
+the full STE dictionary:
 
 - Write one topic in each sentence. Keep an instruction to 20 words or fewer and a
   description to 25 words or fewer.
