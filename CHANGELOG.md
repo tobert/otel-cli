@@ -4,8 +4,7 @@ Begin agent-assisted development era.
 
 ### Added
 
-- AGENTS.md: LLM agent development protocol and guidance, in the
-  cross-tool filename that Claude Code, Codex and others read natively
+- AGENTS.md: LLM agent development protocol and guidance
 - Agent memory and collaboration patterns adapted from otlp-mcp
 - GitHub issue tracking integration for agent workflows
 - Squash commit guidance to maintain clean git history
