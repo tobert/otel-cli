@@ -330,8 +330,7 @@ go run . span -n "testing" -s "my first test span"
 We welcome contributions! This project uses agent-assisted development starting with v0.6.0.
 
 **For agents working on this codebase:**
-- See [BOTS.md](BOTS.md) for comprehensive agent development guidance
-- CLAUDE.md and GEMINI.md symlink to BOTS.md for model-specific access
+- See [AGENTS.md](AGENTS.md) for comprehensive agent development guidance
 - Emphasize functional testing in `main_test.go`
 - Commit freely in branches, squash on merge to main
 

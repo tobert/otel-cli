@@ -4,8 +4,7 @@ Begin agent-assisted development era.
 
 ### Added
 
-- BOTS.md: LLM agent development protocol and guidance
-- CLAUDE.md and GEMINI.md symlinks to BOTS.md
+- AGENTS.md: agent development protocol and guidance
 - Agent memory and collaboration patterns adapted from otlp-mcp
 - GitHub issue tracking integration for agent workflows
 - Squash commit guidance to maintain clean git history
