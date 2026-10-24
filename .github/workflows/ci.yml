@@ -25,9 +25,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # go.mod's `go` line is the floor for building, not the compiler to ship:
+      # setup-go installs exactly that version, so `go 1.26.0` there would
+      # build with 1.26.0 and miss every stdlib security patch since.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: stable
+          check-latest: true
+
+      # Covers the stdlib of the compiler above and every module, direct or
+      # indirect; Dependabot's grouped updates only bump direct requirements.
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
       # The release runs `go mod verify`, never `tidy` (a tidy at release time
       # would ship a tree that differs from the tag), so tidiness is enforced
@@ -65,9 +74,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # go.mod's `go` line is the floor for building, not the compiler to ship:
+      # setup-go installs exactly that version, so `go 1.26.0` there would
+      # build with 1.26.0 and miss every stdlib security patch since.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: stable
+          check-latest: true
 
       # `goreleaser check` would be the cheap gate, but it exits non-zero on the
       # deliberate `brews` deprecation (see .goreleaser.yml). A snapshot renders

@@ -27,6 +27,8 @@ Begin agent-assisted development era.
 - Dependencies refreshed: OpenTelemetry Go 1.47, envcar 0.72, gRPC 1.84,
   golang.org/x/net 0.61 (fixes GO-2026-6603, -6610, -6611, -6612, -6617);
   Go 1.27 builder image, Alpine 3.24 digest bump
+- CI and releases build with the latest stable Go rather than go.mod's floor,
+  and both fail on any govulncheck finding (stdlib or module, direct or not)
 - Establish agent-assisted development practices
 - Emphasize functional testing and self-contained design
 - Documentation of project philosophy and structure for agents
