@@ -1,42 +1,33 @@
-## [0.6.0] - 2025-11-09
+## [0.6.0] - 2026-11-07
 
-Begin agent-assisted development era.
+First release with automated, signed builds. Agent-assisted development starts with this release.
 
 ### Added
 
-- AGENTS.md: agent development protocol and guidance
-- Agent memory and collaboration patterns adapted from otlp-mcp
-- GitHub issue tracking integration for agent workflows
-- Squash commit guidance to maintain clean git history
+- `otel-cli --version` prints the version, like `otel-cli version` (#15)
+- Release artifacts have a cosign keyless signature, SLSA build provenance and an SPDX SBOM (#39)
 
 ### Changed
 
-- Releases are cut by GitHub Actions on a `v*` tag: goreleaser publishes the
-  release and Homebrew formula, and the workflow builds, cosign-signs, attests
-  and tags the multiarch ghcr.io image (version tags land after signing so the
-  package page's "latest" is always pullable)
-- Release artifacts are signed keylessly (cosign bundle over checksums.txt),
-  carry SLSA build provenance, and ship an SPDX SBOM; `gh attestation verify`
-  and `cosign verify-blob` instructions on each release page and in the README
-- CI pins actions by commit SHA, checks gofmt/vet/tidy, and runs a goreleaser
-  snapshot on every pull request so the release config cannot rot
-- Container image tags gain bare semver (`0.6.0`, `0.6`) alongside `v0.6.0` and
-  `latest`; base image is a digest-pinned Alpine 3.24
-- Dependabot keeps action pins, the base image digest, and Go modules current
-- Dependency refresh; image base Alpine 3.24.3
-- Builds use the latest stable Go and fail on govulncheck findings
-- Establish agent-assisted development practices
-- Emphasize functional testing and self-contained design
-- Documentation of project philosophy and structure for agents
-- Clarify workflow: commit freely in branches, squash on merge to main
-- README: clarify fork status and "Amy & the bots" as active maintainers
-- README: improved Contributing section for both agents and humans
-- LICENSE: updated copyright to include Equinix Metal and 2025 A. Tobey
+- `TRACEPARENT` is read and written with the OpenTelemetry env-carriers propagator; uppercase hex is accepted and written as lowercase (#36)
+- A `v*` tag push builds the binaries, packages, Homebrew formula and multiarch ghcr.io image (#39)
+- Image tags are `v0.6.0`, `0.6.0`, `0.6` and `latest` (#39)
+- The image base is Alpine 3.24.3, pinned by digest (#48)
+- Builds use the latest stable Go and stop on govulncheck findings (#48)
+- Dependencies are refreshed; this clears five golang.org/x/net vulnerabilities (#48)
 
 ### Fixed
 
-- `exec` exits 128 + signal when the child is killed by a signal, not 255 (Unix)
-- `exec` no longer panics on Ctrl-C during the span export
+- `exec` exits with the child exit code when the export fails (#26)
+- `exec` exits 127 when the command does not start, not with a panic (#16)
+- `exec` exits 128 + signal when a signal kills the child, not 255 (Unix) (#50)
+- `exec` does not panic on Ctrl-C during the export (#50)
+- `--attrs` parses integers in base 10: `010` is 10 and `0xFF` stays a string (#24)
+- `--tp-ignore-env` no longer sets an all-zero parent span ID (#25)
+
+### Security
+
+- The image CA bundle (20261020) no longer has emSign ECC Root CA - G3, which issued intermediates with compromised keys (#48)
 
 ## [0.5.0] - 2025-04-21
 
