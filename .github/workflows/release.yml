@@ -101,6 +101,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          # Without this, GoReleaser takes the first tag on HEAD by -version:refname,
+          # which ranks v0.6.0-rc.2 above v0.6.0. Empty (dispatch) means unset.
+          GORELEASER_CURRENT_TAG: ${{ github.event_name == 'push' && github.ref_type == 'tag' && github.ref_name || '' }}
 
       # Linking isn't running: a binary can build cleanly and still crash at
       # startup, so execute the linux/amd64 binary the release will ship.
@@ -109,6 +112,11 @@ jobs:
           bin=$(jq -r 'first(.[] | select(.type == "Binary" and .goos == "linux" and .goarch == "amd64") | .path)' dist/artifacts.json)
           [ -n "$bin" ] || { echo "no linux/amd64 binary in dist/artifacts.json"; exit 1; }
           "$bin" version
+          # The image is built from this binary, so stop before the push if it has the wrong version.
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_TYPE" = tag ]; then
+            got=$("$bin" version | cut -d' ' -f1)
+            [ "$got" = "${GITHUB_REF_NAME#v}" ] || { echo "::error::binary reports version $got, tag is $GITHUB_REF_NAME"; exit 1; }
+          fi
 
       # CGO_ENABLED=0 must hold or the alpine image (musl) gets a glibc binary.
       # ldd exits non-zero on a fully static binary, so that's the success case
