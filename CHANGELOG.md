@@ -1,3 +1,13 @@
+## [0.6.1] - 2026-11-09
+
+### Changed
+
+- grpc 1.85.0 (#51)
+
+### Fixed
+
+- A release tag on the same commit as an rc tag releases the right version (#54)
+
 ## [0.6.0] - 2026-11-07
 
 First release with automated, signed builds. Agent-assisted development starts with this release.
