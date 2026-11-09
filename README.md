@@ -342,37 +342,13 @@ We welcome contributions! This project uses agent-assisted development starting 
 
 ## Releases
 
-Releases are cut by GitHub Actions: pushing a `v*` tag runs
-[release.yml](.github/workflows/release.yml), which drives goreleaser
-([.goreleaser.yml](.goreleaser.yml)) to build every platform, publish the GitHub
-release with archives, apk/deb/rpm packages, checksums and an SPDX SBOM, push the
-Homebrew formula to [tobert/homebrew-otel-cli](https://github.com/tobert/homebrew-otel-cli),
-and then builds, signs, attests and tags the multiarch `ghcr.io/tobert/otel-cli` image.
-Everything is signed keylessly with cosign and carries SLSA build provenance; see
-[Verify a download](#verify-a-download).
+A `v*` tag push runs [release.yml](.github/workflows/release.yml) and
+[.goreleaser.yml](.goreleaser.yml). The comments in those files explain each step.
 
-To cut a release:
-
-```shell
-git checkout main && git pull --rebase   # release tags come off main
-# update CHANGELOG.md for the new version and merge that first
-git tag v0.6.0                            # a -rc.N suffix makes a GitHub prerelease and skips the tap
-git push origin v0.6.0                    # the tag push triggers release.yml
-gh run watch                              # optional: follow along
-```
-
-To smoke the whole matrix without publishing, run the workflow by hand from the
-Actions tab (`workflow_dispatch`), or locally:
-
-```shell
-goreleaser release --snapshot --clean --skip=publish,sign,sbom
-```
-
-The workflow needs one repository secret, `HOMEBREW_TAP_GITHUB_TOKEN`: a
-fine-grained personal access token with *Contents: read and write* on the tap
-repository only. `GITHUB_TOKEN` covers the release and the container registry.
-The workflow refuses to start a tagged release without it rather than fail after
-the GitHub release is already published.
+- Tag `v0.X.Y-rc.1` first. An rc does not update the Homebrew tap or `latest`.
+- The tap push needs the repository secret `HOMEBREW_TAP_GITHUB_TOKEN`.
+- If a run fails after the GitHub release exists, fix the cause and run `gh run rerun`.
+- Do not move a published tag. Release the next patch version.
 
 ## License
 
