@@ -223,16 +223,10 @@ The workflow then builds, signs, attests and tags the `ghcr.io/tobert/otel-cli` 
 To release:
 
 1. Update CHANGELOG.md and merge it to main.
-2. Tag `v0.X.Y-rc.1` on main. Watch the run. Check that the image reports the rc version.
-3. Tag `v0.X.Y` on the same commit. Check the release, the tap and the image.
+2. Tag `v0.X.Y-rc.1` on main and watch the `release` workflow.
+3. Tag `v0.X.Y` on the same commit.
 
-- Do not move or reuse a published tag. Release the next patch version.
-- If the Homebrew step fails, the GitHub release exists. Fix the token, then run
-  `gh run rerun <run-id>`.
-- Only a maintainer can set the tap token. Ask a maintainer.
-
-The "Releases" section of README.md has the full procedure, the verification commands
-and the recovery steps.
+Only a maintainer can set the tap token. README.md, "Releases" has the other rules.
 
 ## Attribution
 

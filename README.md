@@ -342,107 +342,13 @@ We welcome contributions! This project uses agent-assisted development starting 
 
 ## Releases
 
-A `v*` tag push runs [release.yml](.github/workflows/release.yml). GoReleaser
-([.goreleaser.yml](.goreleaser.yml)) builds every platform and publishes the GitHub
-release: archives, apk/deb/rpm packages, checksums and an SPDX SBOM. It also pushes
-the Homebrew formula to [tobert/homebrew-otel-cli](https://github.com/tobert/homebrew-otel-cli).
-The workflow then builds, signs, attests and tags the multiarch `ghcr.io/tobert/otel-cli`
-image. cosign signs `checksums.txt` and the image keylessly. Each file in
-`checksums.txt` and the image have SLSA build provenance. See
-[Verify a download](#verify-a-download).
+A `v*` tag push runs [release.yml](.github/workflows/release.yml) and
+[.goreleaser.yml](.goreleaser.yml). The comments in those files explain each step.
 
-A release candidate (rc) tag, `v0.X.Y-rc.N`, makes a GitHub prerelease. An rc does not
-update the Homebrew tap or the `latest` and `X.Y` image tags.
-
-### Make a release
-
-1. Update CHANGELOG.md in a PR and merge it. Use the date of the final tag.
-2. Tag an rc on main and watch the run:
-
-   ```shell
-   git checkout main && git pull --ff-only
-   git tag v0.X.Y-rc.1 && git push origin v0.X.Y-rc.1
-   gh run watch
-   ```
-
-3. Check the rc. The image must report the rc version:
-
-   ```shell
-   docker run --rm ghcr.io/tobert/otel-cli:0.X.Y-rc.1 version
-   gh attestation verify oci://ghcr.io/tobert/otel-cli:0.X.Y-rc.1 -R tobert/otel-cli
-   ```
-
-4. Tag the final release on the same commit as the rc:
-
-   ```shell
-   git tag v0.X.Y && git push origin v0.X.Y
-   gh run watch
-   ```
-
-5. Check the final release. These commands print `v0.X.Y`, `otel-cli v0.X.Y` and
-   `0.X.Y`:
-
-   ```shell
-   gh release list --json tagName,isLatest --jq '.[] | select(.isLatest) | .tagName'
-   gh api repos/tobert/homebrew-otel-cli/commits --jq '.[0].commit.message'
-   docker run --rm ghcr.io/tobert/otel-cli:latest version
-   ```
-
-An rc run stops if the tap token secret is empty, but it does not push to the tap. The
-final release is the first run that uses the token.
-
-The rc tag and the final tag can be on the same commit. The workflow gives GoReleaser
-the pushed tag in `GORELEASER_CURRENT_TAG`. The run stops before the image push if the
-binary version does not match the tag.
-
-### If a release run fails
-
-Do not move or reuse a published tag. The Go module proxy keeps the first commit of
-each tag. To change the code, release the next patch version.
-
-- **The Homebrew step fails with `401 Bad credentials`.** The GitHub release exists.
-  The tap token is not valid. Set a new token (see below), then run
-  `gh run rerun <run-id>`. GoReleaser replaces the existing release assets.
-- **The image push fails with `denied: permission_denied`.** The ghcr package is not
-  linked to this repository. In the package settings, open "Manage Actions access" and
-  give `tobert/otel-cli` the Write role. Then run `gh run rerun <run-id>`.
-
-### The tap token
-
-The workflow needs the repository secret `HOMEBREW_TAP_GITHUB_TOKEN`. Use a
-fine-grained personal access token with *Contents: read and write* on
-`tobert/homebrew-otel-cli` only. `GITHUB_TOKEN` covers the release and the container
-registry.
-
-Set the secret with this command. It tests the token against the tap before it stores
-it. It also keeps the token out of the shell history:
-
-```shell
-read -rs T && GH_TOKEN="$T" gh api repos/tobert/homebrew-otel-cli --jq '.permissions' \
-  && printf '%s' "$T" | gh secret set HOMEBREW_TAP_GITHUB_TOKEN --repo tobert/otel-cli; unset T
-```
-
-A good token prints `"push": true`. The workflow stops a tag run if the secret is
-empty, but it cannot test the token. A token that is not valid or has expired fails
-only at the Homebrew step of a final release.
-
-### Test the release build
-
-Run the workflow by hand from the Actions tab (`workflow_dispatch`). This snapshot run
-builds every artifact and smoke-tests the binary and the image. It publishes nothing.
-CI runs the tests, not this workflow. You can also run a snapshot locally:
-
-```shell
-goreleaser release --snapshot --clean --skip=publish,sign,sbom
-```
-
-A snapshot does not need a tag on the current commit. It does not use the tap token.
-
-### The package page
-
-The install command on the ghcr package page can show a `sha256-*` tag. That tag holds
-the cosign signature and attestation, not an image. Pull a version tag, for example
-`ghcr.io/tobert/otel-cli:0.6.0`.
+- Tag `v0.X.Y-rc.1` first. An rc does not update the Homebrew tap or `latest`.
+- The tap push needs the repository secret `HOMEBREW_TAP_GITHUB_TOKEN`.
+- If a run fails after the GitHub release exists, fix the cause and run `gh run rerun`.
+- Do not move a published tag. Release the next patch version.
 
 ## License
 
