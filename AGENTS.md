@@ -229,7 +229,7 @@ To release:
 - Do not move or reuse a published tag. Release the next patch version.
 - If the Homebrew step fails, the GitHub release exists. Fix the token, then run
   `gh run rerun <run-id>`.
-- Only Amy can set the tap token. Ask her.
+- Only a maintainer can set the tap token. Ask a maintainer.
 
 The "Releases" section of README.md has the full procedure, the verification commands
 and the recovery steps.
