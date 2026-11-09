@@ -214,7 +214,7 @@ otel-cli uses semantic versioning. Before 1.0, a minor release can break compati
 
 A `v*` tag push runs `.github/workflows/release.yml`. GoReleaser (`.goreleaser.yml`)
 makes the binaries, packages, SBOM, signatures, GitHub release and Homebrew formula.
-The workflow then builds, signs, attests and tags the ghcr.io image.
+The workflow then builds, signs, attests and tags the `ghcr.io/tobert/otel-cli` image.
 
 - A `-rc.N` tag makes a GitHub prerelease. It does not update the Homebrew tap or
   `latest`.
@@ -223,10 +223,16 @@ The workflow then builds, signs, attests and tags the ghcr.io image.
 To release:
 
 1. Update CHANGELOG.md and merge it to main.
-2. Tag main: `git tag v0.X.Y && git push origin v0.X.Y`.
-3. Watch the `release` workflow.
+2. Tag `v0.X.Y-rc.1` on main. Watch the run. Check that the image reports the rc version.
+3. Tag `v0.X.Y` on the same commit. Check the release, the tap and the image.
 
-README.md, "Releases" has the full procedure and the required secret.
+- Do not move or reuse a published tag. Release the next patch version.
+- If the Homebrew step fails, the GitHub release exists. Fix the token, then run
+  `gh run rerun <run-id>`.
+- Only Amy can set the tap token. Ask her.
+
+The "Releases" section of README.md has the full procedure, the verification commands
+and the recovery steps.
 
 ## Attribution
 
